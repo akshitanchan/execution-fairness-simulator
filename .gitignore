@@ -1,0 +1,32 @@
+# Binaries
+/fairsim
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of go coverage
+*.out
+coverage.html
+
+# Go workspace
+go.work
+go.work.sum
+
+# Run outputs
+runs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
