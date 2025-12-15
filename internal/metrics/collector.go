@@ -224,9 +224,10 @@ func (c *Collector) recordFill(traderID string, orderID uint64, trade *domain.Tr
 		midAtDecision = info.midAtDecision
 		decisionTime = info.decisionTime
 	}
-	// The RestingQueuePos on the trade indicates the resting order's position.
-	// It applies to the passive side of the trade.
-	queuePosFill = trade.RestingQueuePos
+	// The resting queue position only applies to the passive order.
+	if trade.PassiveOrderID > 0 && orderID == trade.PassiveOrderID {
+		queuePosFill = trade.RestingQueuePos
+	}
 
 	a.fills = append(a.fills, fillInfo{
 		tradePrice:    trade.Price,

@@ -2,6 +2,10 @@
 
 A deterministic exchange simulation that quantifies how latency affects execution outcomes under price-time priority. Produces a "fairness report" comparing identical strategies run with different latency profiles, backed by queue position and event-log evidence.
 
+## Requirements
+
+- Go 1.24+ (validated with Go 1.24.x)
+
 ## Quick Start
 
 ```bash

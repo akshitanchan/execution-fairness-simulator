@@ -144,11 +144,13 @@ func (b *Book) match(incoming *domain.Order, timestamp int64) []domain.Trade {
 
 			b.nextTradeID++
 			trade := domain.Trade{
-				ID:              b.nextTradeID,
-				Price:           resting.Price, // trade at resting order's price
-				Qty:             fillQty,
-				Timestamp:       timestamp,
-				RestingQueuePos: i + 1, // 1-based position in FIFO queue
+				ID:               b.nextTradeID,
+				Price:            resting.Price, // trade at resting order's price
+				Qty:              fillQty,
+				Timestamp:        timestamp,
+				PassiveOrderID:   resting.ID,
+				AggressorOrderID: incoming.ID,
+				RestingQueuePos:  i + 1, // 1-based position in FIFO queue
 			}
 			if incoming.Side == domain.Buy {
 				trade.BuyOrderID = incoming.ID

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/akshitanchan/execution-fairness-simulator/internal/eventlog"
 	"github.com/akshitanchan/execution-fairness-simulator/internal/metrics"
@@ -45,6 +46,13 @@ func main() {
 //   --log <path>       Path to event log (events.jsonl)
 
 func cmdReplay(args []string) {
+	if err := runReplay(args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func runReplay(args []string) error {
 	runDir := ""
 	runId := ""
 	logPath := ""
@@ -68,55 +76,75 @@ func cmdReplay(args []string) {
 		}
 	}
 	if runId != "" && runDir == "" {
-		runDir = defaultRunsDir + "/" + runId
+		runDir = filepath.Join(defaultRunsDir, runId)
+	}
+	if runDir == "" && logPath != "" {
+		runDir = filepath.Dir(logPath)
 	}
 	if logPath == "" && runDir != "" {
-		logPath = runDir + "/events.jsonl"
+		logPath = filepath.Join(runDir, "events.jsonl")
 	}
 	if logPath == "" {
-		fmt.Fprintln(os.Stderr, "Error: --run-id, --run-dir, or --log required")
-		os.Exit(1)
+		return fmt.Errorf("--run-id, --run-dir, or --log required")
 	}
+
+	configPath := filepath.Join(runDir, "config.json")
+	if _, err := os.Stat(configPath); err != nil {
+		return fmt.Errorf("could not access config at %s: %w", configPath, err)
+	}
+	if _, err := os.Stat(logPath); err != nil {
+		return fmt.Errorf("could not access event log at %s: %w", logPath, err)
+	}
+
 	// Load config
-	configPath := runDir + "/config.json"
 	configFile, err := os.Open(configPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: could not open config: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("could not open config: %w", err)
 	}
 	defer configFile.Close()
 	cfg := &scenario.Config{}
 	if err := json.NewDecoder(configFile).Decode(cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: could not decode config: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("could not decode config: %w", err)
 	}
-	// Hash original log
-	origHash := ""
-	origHashPath := runDir + "/events.jsonl"
-	if h, err := simHashFile(origHashPath); err == nil {
-		origHash = h
+
+	targetHash, err := simHashFile(logPath)
+	if err != nil {
+		return fmt.Errorf("could not hash target event log: %w", err)
 	}
-	// Replay log
-	fmt.Printf("Replaying event log: %s\n", logPath)
+
+	// Analyze log
+	fmt.Printf("Analyzing event log: %s\n", logPath)
 	metricsByTrader, err := computeMetricsFromEventLog(logPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: could not recompute metrics from event log: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("could not recompute metrics from event log: %w", err)
 	}
 	fmt.Println("\nMetrics Summary (Replay):")
 	report.PrintSummary(cfg, metricsByTrader)
-	// Hash replayed log (if written)
-	replayHash := ""
-	if h, err := simHashFile(logPath); err == nil {
-		replayHash = h
+
+	// Deterministically regenerate the run and compare event-log hashes.
+	tmpDir, err := os.MkdirTemp("", "fairsim-replay-*")
+	if err != nil {
+		return fmt.Errorf("create temp directory for deterministic replay: %w", err)
 	}
-	if origHash != "" && replayHash != "" {
-		if origHash == replayHash {
-			fmt.Println("\nEvent log hash matches original: ", origHash[:16], "...")
-		} else {
-			fmt.Println("\nEvent log hash MISMATCH!\nOriginal:", origHash[:16], "...\nReplay:  ", replayHash[:16], "...")
-		}
+	defer os.RemoveAll(tmpDir)
+
+	replayRunner, err := sim.NewRunner(cfg, tmpDir)
+	if err != nil {
+		return fmt.Errorf("initialize deterministic replay runner: %w", err)
 	}
+	replayResult, err := replayRunner.Run()
+	if err != nil {
+		return fmt.Errorf("run deterministic replay: %w", err)
+	}
+
+	fmt.Printf("\nDeterministic replay log: %s\n", replayResult.LogPath)
+	if targetHash == replayResult.LogHash {
+		fmt.Printf("Event log hash matches deterministic replay: %s...\n", targetHash[:16])
+	} else {
+		fmt.Printf("Event log hash MISMATCH!\nTarget: %s...\nReplay: %s...\n", targetHash[:16], replayResult.LogHash[:16])
+	}
+
+	return nil
 }
 
 func simHashFile(path string) (string, error) {
@@ -150,6 +178,7 @@ Commands:
   run      Run a simulation scenario
   demo     Run all scenarios and generate consolidated report
   report   Generate a fairness report
+  replay   Analyze a run log and verify deterministic replay
 
 Run options:
   --scenario <name>   Scenario: calm, thin, spike (required)
@@ -160,7 +189,12 @@ Demo options:
 
 Report options:
   --last-run          Use the most recent run
-  --run-dir <path>    Path to a specific run directory`)
+  --run-dir <path>    Path to a specific run directory
+
+Replay options:
+  --run-id <id>       Run id (e.g. calm_seed42)
+  --run-dir <path>    Path to a specific run directory
+  --log <path>        Path to event log (defaults to <run-dir>/events.jsonl)`)
 }
 
 func cmdRun(args []string) {

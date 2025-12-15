@@ -70,7 +70,7 @@ func (s *Side) UnmarshalJSON(data []byte) error {
 type OrderType int8
 
 const (
-	LimitOrder  OrderType = iota
+	LimitOrder OrderType = iota
 	MarketOrder
 	CancelOrder
 )
@@ -184,12 +184,12 @@ type Order struct {
 	TraderID     string    `json:"trader_id"`
 	Side         Side      `json:"side"`
 	Type         OrderType `json:"type"`
-	Price        int64     `json:"price"`          // 0 for market orders
+	Price        int64     `json:"price"` // 0 for market orders
 	Qty          int64     `json:"qty"`
 	RemainingQty int64     `json:"remaining_qty"`
-	DecisionTime int64     `json:"decision_time"`  // nanos: when trader decided
-	ArrivalTime  int64     `json:"arrival_time"`   // nanos: after latency
-	SeqNo        uint64    `json:"seq_no"`          // global FIFO tie-break
+	DecisionTime int64     `json:"decision_time"`       // nanos: when trader decided
+	ArrivalTime  int64     `json:"arrival_time"`        // nanos: after latency
+	SeqNo        uint64    `json:"seq_no"`              // global FIFO tie-break
 	CancelID     uint64    `json:"cancel_id,omitempty"` // for CancelOrder: target order ID
 	QueuePos     int       `json:"queue_pos,omitempty"` // 1-based queue position at placement
 }
@@ -209,6 +209,9 @@ type Trade struct {
 	Price       int64  `json:"price"`
 	Qty         int64  `json:"qty"`
 	Timestamp   int64  `json:"timestamp"`
+	// Explicit passive/aggressor identity for attribution in analytics.
+	PassiveOrderID   uint64 `json:"passive_order_id,omitempty"`
+	AggressorOrderID uint64 `json:"aggressor_order_id,omitempty"`
 	// Queue position of the resting (passive) order at fill time.
 	RestingQueuePos int `json:"resting_queue_pos,omitempty"`
 }

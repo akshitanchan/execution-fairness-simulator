@@ -195,30 +195,34 @@ func TestComputeFromEventsMatchesComputeFromLog(t *testing.T) {
 			Timestamp: 120,
 			Type:      domain.EventTradeExecuted,
 			Trade: &domain.Trade{
-				ID:              1,
-				BuyOrderID:      10,
-				SellOrderID:     7001,
-				BuyTrader:       "fast",
-				SellTrader:      "background",
-				Price:           domain.FloatToPrice(100.00),
-				Qty:             5,
-				Timestamp:       120,
-				RestingQueuePos: 1,
+				ID:               1,
+				BuyOrderID:       10,
+				SellOrderID:      7001,
+				BuyTrader:        "fast",
+				SellTrader:       "background",
+				Price:            domain.FloatToPrice(100.00),
+				Qty:              5,
+				Timestamp:        120,
+				PassiveOrderID:   10,
+				AggressorOrderID: 7001,
+				RestingQueuePos:  1,
 			},
 		},
 		{
 			Timestamp: 130,
 			Type:      domain.EventTradeExecuted,
 			Trade: &domain.Trade{
-				ID:              2,
-				BuyOrderID:      7002,
-				SellOrderID:     20,
-				BuyTrader:       "background",
-				SellTrader:      "slow",
-				Price:           domain.FloatToPrice(100.02),
-				Qty:             5,
-				Timestamp:       130,
-				RestingQueuePos: 1,
+				ID:               2,
+				BuyOrderID:       7002,
+				SellOrderID:      20,
+				BuyTrader:        "background",
+				SellTrader:       "slow",
+				Price:            domain.FloatToPrice(100.02),
+				Qty:              5,
+				Timestamp:        130,
+				PassiveOrderID:   20,
+				AggressorOrderID: 7002,
+				RestingQueuePos:  1,
 			},
 		},
 	}
@@ -245,5 +249,82 @@ func TestComputeFromEventsMatchesComputeFromLog(t *testing.T) {
 
 	if !reflect.DeepEqual(fromEvents, fromLog) {
 		t.Fatalf("metrics mismatch between ComputeFromEvents and ComputeFromLog")
+	}
+}
+
+func TestQueuePositionAtFillOnlyForPassiveOrder(t *testing.T) {
+	events := []*domain.Event{
+		{
+			Timestamp: 50,
+			Type:      domain.EventBBOUpdate,
+			BBO: &domain.BBO{
+				BidPrice: domain.FloatToPrice(99.99),
+				BidQty:   20,
+				AskPrice: domain.FloatToPrice(100.01),
+				AskQty:   20,
+				MidPrice: domain.FloatToPrice(100.00),
+			},
+		},
+		{
+			Timestamp: 100,
+			Type:      domain.EventOrderAccepted,
+			Order: &domain.Order{
+				ID:           1,
+				TraderID:     "fast",
+				Side:         domain.Buy,
+				Type:         domain.LimitOrder,
+				Price:        domain.FloatToPrice(100.00),
+				Qty:          5,
+				RemainingQty: 5,
+				DecisionTime: 90,
+				ArrivalTime:  100,
+				QueuePos:     3,
+			},
+		},
+		{
+			Timestamp: 110,
+			Type:      domain.EventOrderAccepted,
+			Order: &domain.Order{
+				ID:           2,
+				TraderID:     "slow",
+				Side:         domain.Sell,
+				Type:         domain.MarketOrder,
+				Qty:          5,
+				RemainingQty: 5,
+				DecisionTime: 100,
+				ArrivalTime:  110,
+			},
+		},
+		{
+			Timestamp: 111,
+			Type:      domain.EventTradeExecuted,
+			Trade: &domain.Trade{
+				ID:               1,
+				BuyOrderID:       1,
+				SellOrderID:      2,
+				BuyTrader:        "fast",
+				SellTrader:       "slow",
+				Price:            domain.FloatToPrice(100.00),
+				Qty:              5,
+				Timestamp:        111,
+				PassiveOrderID:   1,
+				AggressorOrderID: 2,
+				RestingQueuePos:  3,
+			},
+		},
+	}
+
+	m := ComputeFromEvents(events)
+	fast := m["fast"]
+	slow := m["slow"]
+	if fast == nil || slow == nil {
+		t.Fatal("expected metrics for both fast and slow traders")
+	}
+
+	if fast.AvgQueuePosFill != 3 {
+		t.Fatalf("expected passive trader queue-pos-fill 3, got %.2f", fast.AvgQueuePosFill)
+	}
+	if slow.AvgQueuePosFill != 0 {
+		t.Fatalf("expected aggressor queue-pos-fill 0, got %.2f", slow.AvgQueuePosFill)
 	}
 }
