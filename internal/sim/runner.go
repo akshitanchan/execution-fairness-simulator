@@ -21,14 +21,14 @@ import (
 
 // RunResult holds the output of a simulation run.
 type RunResult struct {
-	RunID       string        `json:"run_id"`
-	Config      *scenario.Config `json:"config"`
-	EventCount  uint64        `json:"event_count"`
-	TradeCount  int           `json:"trade_count"`
-	Duration    time.Duration `json:"wall_duration"`
-	LogPath     string        `json:"log_path"`
-	LogHash     string        `json:"log_hash"`
-	OutputDir   string        `json:"output_dir"`
+	RunID      string           `json:"run_id"`
+	Config     *scenario.Config `json:"config"`
+	EventCount uint64           `json:"event_count"`
+	TradeCount int              `json:"trade_count"`
+	Duration   time.Duration    `json:"wall_duration"`
+	LogPath    string           `json:"log_path"`
+	LogHash    string           `json:"log_hash"`
+	OutputDir  string           `json:"output_dir"`
 }
 
 // Runner executes a simulation.
@@ -53,14 +53,12 @@ type Runner struct {
 
 // NewRunner creates a simulation runner.
 func NewRunner(cfg *scenario.Config, baseOutputDir string) (*Runner, error) {
-	// Create output directory with deterministic run ID (seed-based).
 	runID := fmt.Sprintf("%s_seed%d", cfg.Name, cfg.Seed)
 	outputDir := filepath.Join(baseOutputDir, runID)
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return nil, fmt.Errorf("create output dir: %w", err)
 	}
 
-	// Create event log writer.
 	logPath := filepath.Join(outputDir, "events.jsonl")
 	logWriter, err := eventlog.NewWriter(logPath)
 	if err != nil {
@@ -68,14 +66,13 @@ func NewRunner(cfg *scenario.Config, baseOutputDir string) (*Runner, error) {
 	}
 
 	r := &Runner{
-		cfg:       cfg,
-		book:      orderbook.New(),
-		logWriter: logWriter,
-		outputDir: outputDir,
+		cfg:        cfg,
+		book:       orderbook.New(),
+		logWriter:  logWriter,
+		outputDir:  outputDir,
 		currentBBO: &domain.BBO{},
 	}
 
-	// Create event loop with the runner's handler.
 	r.loop = engine.NewEventLoop(r.handleEvent)
 
 	// Create trader agents with deterministic seeds derived from main seed.
@@ -100,13 +97,11 @@ func NewRunner(cfg *scenario.Config, baseOutputDir string) (*Runner, error) {
 func (r *Runner) Run() (*RunResult, error) {
 	startWall := time.Now()
 
-	// Write sim start event.
 	r.logEvent(&domain.Event{
 		Timestamp: 0,
 		Type:      domain.EventSimStart,
 	})
 
-	// Generate and schedule background events.
 	gen := scenario.NewGenerator(r.cfg)
 	bgEvents := gen.Generate()
 	for _, e := range bgEvents {
@@ -130,38 +125,31 @@ func (r *Runner) Run() (*RunResult, error) {
 		}
 	}
 
-	// Schedule sim end event.
 	r.loop.Schedule(&domain.Event{
 		Timestamp: r.cfg.Duration,
 		Type:      domain.EventSimEnd,
 	})
 
-	// Run the event loop.
 	r.loop.Run()
 
-	// Close the log.
 	if err := r.logWriter.Close(); err != nil {
 		return nil, fmt.Errorf("close event log: %w", err)
 	}
 
-	// Compute log hash.
 	logPath := filepath.Join(r.outputDir, "events.jsonl")
 	hash, err := hashFile(logPath)
 	if err != nil {
 		return nil, fmt.Errorf("hash log: %w", err)
 	}
 
-	// Save config.
 	cfgPath := filepath.Join(r.outputDir, "config.json")
 	cfgData, _ := json.MarshalIndent(r.cfg, "", "  ")
 	os.WriteFile(cfgPath, cfgData, 0644)
 
-	// Save trades.
 	tradesPath := filepath.Join(r.outputDir, "trades.json")
 	tradesData, _ := json.MarshalIndent(r.trades, "", "  ")
 	os.WriteFile(tradesPath, tradesData, 0644)
 
-	// Write last-run pointer.
 	lastRunPath := filepath.Join(filepath.Dir(r.outputDir), "last-run")
 	os.WriteFile(lastRunPath, []byte(r.outputDir), 0644)
 
@@ -210,10 +198,8 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 
 	var newEvents []*domain.Event
 
-	// Process through order book.
 	trades, bbo := r.book.ProcessOrder(order, event.Timestamp)
 
-	// Assert invariants after every order.
 	r.book.AssertInvariants()
 
 	// Record queue position at placement for limit orders that rested.
@@ -234,7 +220,6 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 		}
 	}
 
-	// Handle cancels.
 	if order.Type == domain.CancelOrder {
 		cancelEvent := &domain.Event{
 			Timestamp: event.Timestamp,
@@ -251,7 +236,6 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 		}
 	}
 
-	// Log trades.
 	for i := range trades {
 		trade := &trades[i]
 		r.trades = append(r.trades, *trade)
@@ -276,7 +260,7 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 		}
 	}
 
-	// Log BBO update if changed.
+	// Log BBO update.
 	if bbo != nil {
 		r.currentBBO = bbo
 		bboEvent := &domain.Event{
@@ -370,7 +354,6 @@ func (r *Runner) handleReQuote(event *domain.Event) []*domain.Event {
 
 func (r *Runner) logEvent(event *domain.Event) {
 	if err := r.logWriter.Write(event); err != nil {
-		// In a production system, we'd handle this more gracefully.
 		panic(fmt.Sprintf("failed to write event: %v", err))
 	}
 }

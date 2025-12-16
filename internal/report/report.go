@@ -51,7 +51,7 @@ func (r *Report) Generate() error {
 		return fmt.Errorf("write report: %w", err)
 	}
 
-	// Generate ASCII plots (embedded in report).
+	// Generate ASCII plots in a separate plots.txt artifact.
 	plotPath := filepath.Join(r.outDir, "plots.txt")
 	plots := r.renderPlots()
 	if err := os.WriteFile(plotPath, []byte(plots), 0644); err != nil {

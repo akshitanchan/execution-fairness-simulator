@@ -35,7 +35,7 @@ The order book implements **price-time priority**:
 |------|-------------|
 | **Price priority** | Better-priced orders execute first. Bids sorted descending, asks ascending. |
 | **Time priority** | At the same price, orders are filled in FIFO (insertion) order. |
-| **Partial fills** | Supported — partially filled orders remain on the book. |
+| **Partial fills** | Supported (partially filled orders remain on the book). |
 | **Market orders** | Sweep the opposite side until filled or book is empty. |
 | **Limit orders** | Match aggressively first, then rest if any quantity remains. |
 | **Cancels** | Remove remaining quantity; previously filled quantity is unaffected. |
@@ -49,8 +49,8 @@ The order book implements **price-time priority**:
 ## Latency Model
 
 Each trader has:
-- `base_latency_ms` — Fixed propagation delay
-- `jitter_ms` — Uniform random jitter `[0, jitter_ms)` from a seeded RNG
+- `base_latency_ms` - Fixed propagation delay
+- `jitter_ms` - Uniform random jitter `[0, jitter_ms)` from a seeded RNG
 
 ```
 arrival_time = decision_time + base_latency + uniform(0, jitter)
@@ -111,11 +111,11 @@ Periodic windows of intense activity, rapid cancels.
 
 Both traders run the same strategy for fair comparison:
 
-1. **Post at best bid/ask** — Place limit orders at the current best price
-2. **Cancel stale orders** — Cancel unfilled orders after 500 ms timeout
-3. **Cross on strong signal** — Submit a market order when signal exceeds threshold (±1.0)
+1. **Post at best bid/ask** - Place limit orders at the current best price
+2. **Cancel stale orders** - Cancel unfilled orders after 500 ms timeout
+3. **Cross on strong signal** - Submit a market order when signal exceeds threshold (±1.0)
 
-The strategy is intentionally simple — the goal is measuring latency impact, not alpha.
+The strategy is intentionally simple because the goal is measuring latency impact, not alpha.
 
 ## Metrics
 

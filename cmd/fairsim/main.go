@@ -40,11 +40,6 @@ func main() {
 	}
 }
 
-// Replay options:
-//   --run-id <id>      Run id (e.g. calm_seed123)
-//   --run-dir <path>   Path to run directory
-//   --log <path>       Path to event log (events.jsonl)
-
 func cmdReplay(args []string) {
 	if err := runReplay(args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -96,7 +91,6 @@ func runReplay(args []string) error {
 		return fmt.Errorf("could not access event log at %s: %w", logPath, err)
 	}
 
-	// Load config
 	configFile, err := os.Open(configPath)
 	if err != nil {
 		return fmt.Errorf("could not open config: %w", err)
@@ -112,7 +106,6 @@ func runReplay(args []string) error {
 		return fmt.Errorf("could not hash target event log: %w", err)
 	}
 
-	// Analyze log
 	fmt.Printf("Analyzing event log: %s\n", logPath)
 	metricsByTrader, err := computeMetricsFromEventLog(logPath)
 	if err != nil {
@@ -248,7 +241,6 @@ func cmdRun(args []string) {
 	fmt.Printf("  Log hash:         %s\n", result.LogHash[:16]+"...")
 	fmt.Printf("  Output:           %s\n", result.OutputDir)
 
-	// compute and display metrics summary.
 	metricsByTrader, err := metrics.ComputeFromLog(result.LogPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not compute metrics: %v\n", err)
@@ -258,7 +250,6 @@ func cmdRun(args []string) {
 	fmt.Println("\nMetrics Summary:")
 	report.PrintSummary(cfg, metricsByTrader)
 
-	// generate report.
 	reportGen := report.NewReport(cfg, metricsByTrader, result.OutputDir)
 	if err := reportGen.Generate(); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: could not generate report: %v\n", err)
@@ -307,7 +298,6 @@ func cmdReport(args []string) {
 		os.Exit(1)
 	}
 
-	// read the report if it exists.
 	reportPath := runDir + "/report.md"
 	data, err := os.ReadFile(reportPath)
 	if err != nil {
@@ -317,7 +307,6 @@ func cmdReport(args []string) {
 
 	fmt.Println(string(data))
 
-	// also print plots.
 	plotsPath := runDir + "/plots.txt"
 	plotData, err := os.ReadFile(plotsPath)
 	if err == nil {
@@ -365,7 +354,6 @@ func cmdDemo(args []string) {
 			continue
 		}
 
-		// generate per-scenario report.
 		reportGen := report.NewReport(cfg, metricsByTrader, result.OutputDir)
 		if err := reportGen.Generate(); err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: report generation failed for %s: %v\n", name, err)
@@ -378,10 +366,8 @@ func cmdDemo(args []string) {
 		})
 	}
 
-	// print cross-scenario console summary.
 	report.PrintCrossSummary(results)
 
-	// generate consolidated cross-scenario report.
 	crossReport := report.NewCrossReport(results, defaultRunsDir)
 	if err := crossReport.Generate(); err != nil {
 		fmt.Fprintf(os.Stderr, "Warning: cross-scenario report failed: %v\n", err)

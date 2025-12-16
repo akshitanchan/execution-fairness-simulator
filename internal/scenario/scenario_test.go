@@ -111,7 +111,7 @@ func TestSpikeGeneratorHasBurstPeriods(t *testing.T) {
 		}
 	}
 
-	// Burst windows should have higher density.
+	// Ensure both burst and non-burst windows contain events.
 	if burstCount == 0 {
 		t.Error("no events in burst windows")
 	}

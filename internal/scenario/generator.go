@@ -105,7 +105,7 @@ func (g *backgroundGen) generateSignals() []*domain.Event {
 	}
 
 	for t := interval; t < g.cfg.Duration; t += interval {
-		// Signal value is a random walk step.
+		// Signal value is sampled from N(0, 0.5^2).
 		value := g.rng.NormFloat64() * 0.5
 		events = append(events, &domain.Event{
 			Timestamp: t,
@@ -340,7 +340,7 @@ func (g *SpikeGenerator) Generate() []*domain.Event {
 		return false
 	}
 
-	// Base interval — during bursts, reduce interval by burst rate.
+	// During bursts, interval is reduced by BurstRate.
 	t := p.OrderIntervalNs
 	for t < g.cfg.Duration {
 		interval := p.OrderIntervalNs

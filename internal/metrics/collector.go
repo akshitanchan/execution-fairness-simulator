@@ -34,8 +34,8 @@ type TraderMetrics struct {
 	SlippageBps  float64 `json:"slippage_bps"` // in basis points
 
 	// Time metrics.
-	AvgTimeToFillNs float64   `json:"avg_time_to_fill_ns"`
-	TimeToFillDist  []float64 `json:"time_to_fill_dist"` // all time-to-fill values in ms
+	AvgTimeToFillNs float64   `json:"avg_time_to_fill_ns"` // average time-to-fill in ms (legacy field name)
+	TimeToFillDist  []float64 `json:"time_to_fill_dist"`   // all time-to-fill values in ms
 
 	// Queue position metrics.
 	AvgQueuePosPlace float64 `json:"avg_queue_pos_place"` // at placement
@@ -255,7 +255,7 @@ func (c *Collector) midAtTime(t int64) int64 {
 	return c.bboHistory[idx-1].bbo.MidPrice
 }
 
-// priceAfterFill returns the mid price N ms after a fill time.
+// priceAfterDuration returns the mid price durationNs after fillTime.
 func (c *Collector) priceAfterDuration(fillTime int64, durationNs int64) int64 {
 	targetTime := fillTime + durationNs
 	return c.midAtTime(targetTime)

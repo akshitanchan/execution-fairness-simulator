@@ -24,7 +24,6 @@ func (pl *PriceLevel) TotalQty() int64 {
 	return total
 }
 
-// removeFilledOrders removes orders with RemainingQty <= 0.
 func (pl *PriceLevel) removeFilledOrders() {
 	n := 0
 	for _, o := range pl.Orders {
@@ -44,10 +43,8 @@ type Book struct {
 	// orderIndex maps order ID to the order pointer for fast cancel lookup.
 	orderIndex map[uint64]*domain.Order
 
-	// Counters
 	nextTradeID uint64
 
-	// Last known BBO for change detection.
 	lastBBO domain.BBO
 }
 

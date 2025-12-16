@@ -69,9 +69,7 @@ func (el *EventLoop) ScheduleWithSeqNo(event *domain.Event) {
 	heap.Push(&el.queue, event)
 }
 
-// Run processes events until the queue is empty or the handler returns no
-// more events and no events remain. It's fully deterministic given the same
-// initial events.
+// Run processes events until the queue is empty.
 func (el *EventLoop) Run() {
 	for el.queue.Len() > 0 {
 		event := heap.Pop(&el.queue).(*domain.Event)
