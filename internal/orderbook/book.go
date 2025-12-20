@@ -1,5 +1,5 @@
 // Package orderbook implements a single-instrument limit order book
-// with price-time priority matching.
+// with price-time priority matching
 package orderbook
 
 import (
@@ -9,13 +9,13 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/domain"
 )
 
-// PriceLevel holds all resting orders at a single price, in FIFO order.
+// PriceLevel holds all resting orders at a single price, in FIFO order
 type PriceLevel struct {
 	Price  int64
 	Orders []*domain.Order
 }
 
-// TotalQty returns the sum of remaining quantities at this level.
+// TotalQty returns the sum of remaining quantities at this level
 func (pl *PriceLevel) TotalQty() int64 {
 	var total int64
 	for _, o := range pl.Orders {
@@ -35,12 +35,12 @@ func (pl *PriceLevel) removeFilledOrders() {
 	pl.Orders = pl.Orders[:n]
 }
 
-// Book is a single-instrument limit order book.
+// Book is a single-instrument limit order book
 type Book struct {
 	Bids []*PriceLevel // sorted descending by price (best bid first)
 	Asks []*PriceLevel // sorted ascending by price (best ask first)
 
-	// orderIndex maps order ID to the order pointer for fast cancel lookup.
+	// orderIndex maps order ID to the order pointer for fast cancel lookup
 	orderIndex map[uint64]*domain.Order
 
 	nextTradeID uint64
@@ -48,15 +48,15 @@ type Book struct {
 	lastBBO domain.BBO
 }
 
-// New creates an empty order book.
+// New creates an empty order book
 func New() *Book {
 	return &Book{
 		orderIndex: make(map[uint64]*domain.Order),
 	}
 }
 
-// ProcessOrder handles a limit, market, or cancel order.
-// Returns any trades generated and the updated BBO.
+// ProcessOrder handles a limit, market, or cancel order
+// Returns any trades generated and the updated BBO
 func (b *Book) ProcessOrder(order *domain.Order, timestamp int64) ([]domain.Trade, *domain.BBO) {
 	switch order.Type {
 	case domain.LimitOrder:
@@ -70,12 +70,12 @@ func (b *Book) ProcessOrder(order *domain.Order, timestamp int64) ([]domain.Trad
 	}
 }
 
-// processLimit inserts a limit order, matching aggressively first.
+// processLimit inserts a limit order, matching aggressively first
 func (b *Book) processLimit(order *domain.Order, timestamp int64) ([]domain.Trade, *domain.BBO) {
 	order.RemainingQty = order.Qty
 	trades := b.match(order, timestamp)
 
-	// If not fully filled, rest on the book.
+	// If not fully filled, rest on the book
 	if order.RemainingQty > 0 {
 		b.insert(order)
 	}
@@ -84,7 +84,7 @@ func (b *Book) processLimit(order *domain.Order, timestamp int64) ([]domain.Trad
 	return trades, bbo
 }
 
-// processMarket sweeps the book. No resting.
+// processMarket sweeps the book. No resting
 func (b *Book) processMarket(order *domain.Order, timestamp int64) ([]domain.Trade, *domain.BBO) {
 	order.RemainingQty = order.Qty
 	trades := b.match(order, timestamp)
@@ -92,11 +92,11 @@ func (b *Book) processMarket(order *domain.Order, timestamp int64) ([]domain.Tra
 	return trades, bbo
 }
 
-// processCancel removes remaining quantity of the target order.
+// processCancel removes remaining quantity of the target order
 func (b *Book) processCancel(cancel *domain.Order) ([]domain.Trade, *domain.BBO) {
 	target, exists := b.orderIndex[cancel.CancelID]
 	if !exists || target.RemainingQty <= 0 {
-		// Already filled or unknown — no-op.
+		// Already filled or unknown — no-op
 		return nil, b.BBO()
 	}
 
@@ -107,7 +107,7 @@ func (b *Book) processCancel(cancel *domain.Order) ([]domain.Trade, *domain.BBO)
 	return nil, b.BBO()
 }
 
-// match attempts to fill the incoming order against the opposite side.
+// match attempts to fill the incoming order against the opposite side
 func (b *Book) match(incoming *domain.Order, timestamp int64) []domain.Trade {
 	var trades []domain.Trade
 	var oppositeSide *[]*PriceLevel
@@ -121,7 +121,7 @@ func (b *Book) match(incoming *domain.Order, timestamp int64) []domain.Trade {
 	for incoming.RemainingQty > 0 && len(*oppositeSide) > 0 {
 		level := (*oppositeSide)[0]
 
-		// Price check for limit orders.
+		// Price check for limit orders
 		if incoming.Type == domain.LimitOrder {
 			if incoming.Side == domain.Buy && incoming.Price < level.Price {
 				break // incoming bid too low
@@ -131,7 +131,7 @@ func (b *Book) match(incoming *domain.Order, timestamp int64) []domain.Trade {
 			}
 		}
 
-		// Walk orders at this level in FIFO order.
+		// Walk orders at this level in FIFO order
 		for i := 0; i < len(level.Orders) && incoming.RemainingQty > 0; {
 			resting := level.Orders[i]
 			fillQty := min64(incoming.RemainingQty, resting.RemainingQty)
@@ -164,14 +164,14 @@ func (b *Book) match(incoming *domain.Order, timestamp int64) []domain.Trade {
 
 			if resting.RemainingQty <= 0 {
 				delete(b.orderIndex, resting.ID)
-				// Remove from slice by advancing.
+				// Remove from slice by advancing
 				level.Orders = append(level.Orders[:i], level.Orders[i+1:]...)
 			} else {
 				i++
 			}
 		}
 
-		// Remove empty levels.
+		// Remove empty levels
 		if len(level.Orders) == 0 {
 			*oppositeSide = (*oppositeSide)[1:]
 		}
@@ -180,7 +180,7 @@ func (b *Book) match(incoming *domain.Order, timestamp int64) []domain.Trade {
 	return trades
 }
 
-// insert places a resting order into the book at the appropriate level.
+// insert places a resting order into the book at the appropriate level
 func (b *Book) insert(order *domain.Order) {
 	b.orderIndex[order.ID] = order
 
@@ -191,10 +191,10 @@ func (b *Book) insert(order *domain.Order) {
 	}
 }
 
-// insertIntoLevels inserts an order into a sorted price level slice.
-// descending=true for bids, false for asks.
+// insertIntoLevels inserts an order into a sorted price level slice
+// descending=true for bids, false for asks
 func insertIntoLevels(levels []*PriceLevel, order *domain.Order, descending bool) []*PriceLevel {
-	// Find the level for this price.
+	// Find the level for this price
 	idx := sort.Search(len(levels), func(i int) bool {
 		if descending {
 			return levels[i].Price <= order.Price
@@ -203,12 +203,12 @@ func insertIntoLevels(levels []*PriceLevel, order *domain.Order, descending bool
 	})
 
 	if idx < len(levels) && levels[idx].Price == order.Price {
-		// Append to existing level (FIFO).
+		// Append to existing level (FIFO)
 		levels[idx].Orders = append(levels[idx].Orders, order)
 		return levels
 	}
 
-	// Insert new level.
+	// Insert new level
 	newLevel := &PriceLevel{
 		Price:  order.Price,
 		Orders: []*domain.Order{order},
@@ -219,7 +219,7 @@ func insertIntoLevels(levels []*PriceLevel, order *domain.Order, descending bool
 	return levels
 }
 
-// removeOrder removes an order from its price level.
+// removeOrder removes an order from its price level
 func (b *Book) removeOrder(order *domain.Order) {
 	var levels *[]*PriceLevel
 	if order.Side == domain.Buy {
@@ -244,7 +244,7 @@ func (b *Book) removeOrder(order *domain.Order) {
 	}
 }
 
-// BBO returns the current best bid and offer.
+// BBO returns the current best bid and offer
 func (b *Book) BBO() *domain.BBO {
 	bbo := &domain.BBO{}
 
@@ -263,8 +263,8 @@ func (b *Book) BBO() *domain.BBO {
 	return bbo
 }
 
-// QueuePosition returns the position (1-based) of an order at its price level.
-// Returns 0 if the order is not found on the book.
+// QueuePosition returns the position (1-based) of an order at its price level
+// Returns 0 if the order is not found on the book
 func (b *Book) QueuePosition(orderID uint64) int {
 	order, exists := b.orderIndex[orderID]
 	if !exists {
@@ -291,12 +291,12 @@ func (b *Book) QueuePosition(orderID uint64) int {
 	return 0
 }
 
-// Depth returns the number of price levels on each side.
+// Depth returns the number of price levels on each side
 func (b *Book) Depth() (bidLevels, askLevels int) {
 	return len(b.Bids), len(b.Asks)
 }
 
-// TotalVolume returns total resting volume on each side.
+// TotalVolume returns total resting volume on each side
 func (b *Book) TotalVolume() (bidVol, askVol int64) {
 	for _, level := range b.Bids {
 		bidVol += level.TotalQty()
@@ -307,9 +307,9 @@ func (b *Book) TotalVolume() (bidVol, askVol int64) {
 	return
 }
 
-// AssertInvariants checks all book invariants. Panics on violation.
+// AssertInvariants checks all book invariants. Panics on violation
 func (b *Book) AssertInvariants() {
-	// 1. Bids sorted descending.
+	// 1. Bids sorted descending
 	for i := 1; i < len(b.Bids); i++ {
 		if b.Bids[i].Price >= b.Bids[i-1].Price {
 			panic(fmt.Sprintf("bid levels not sorted descending: %d >= %d at index %d",
@@ -317,7 +317,7 @@ func (b *Book) AssertInvariants() {
 		}
 	}
 
-	// 2. Asks sorted ascending.
+	// 2. Asks sorted ascending
 	for i := 1; i < len(b.Asks); i++ {
 		if b.Asks[i].Price <= b.Asks[i-1].Price {
 			panic(fmt.Sprintf("ask levels not sorted ascending: %d <= %d at index %d",
@@ -325,7 +325,7 @@ func (b *Book) AssertInvariants() {
 		}
 	}
 
-	// 3. No crossed book.
+	// 3. No crossed book
 	if len(b.Bids) > 0 && len(b.Asks) > 0 {
 		if b.Bids[0].Price >= b.Asks[0].Price {
 			panic(fmt.Sprintf("crossed book: best bid %d >= best ask %d",
@@ -333,7 +333,7 @@ func (b *Book) AssertInvariants() {
 		}
 	}
 
-	// 4. No empty levels.
+	// 4. No empty levels
 	for _, level := range b.Bids {
 		if len(level.Orders) == 0 {
 			panic(fmt.Sprintf("empty bid level at price %d", level.Price))
@@ -345,7 +345,7 @@ func (b *Book) AssertInvariants() {
 		}
 	}
 
-	// 5. No negative remaining quantities.
+	// 5. No negative remaining quantities
 	for _, level := range b.Bids {
 		for _, o := range level.Orders {
 			if o.RemainingQty < 0 {
@@ -367,7 +367,7 @@ func (b *Book) AssertInvariants() {
 		}
 	}
 
-	// 6. orderIndex consistency.
+	// 6. orderIndex consistency
 	count := 0
 	for _, level := range b.Bids {
 		count += len(level.Orders)

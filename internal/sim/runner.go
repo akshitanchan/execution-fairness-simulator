@@ -1,5 +1,5 @@
 // Package sim wires together the order book, event loop, traders,
-// scenario generator, and event log into a complete simulation run.
+// scenario generator, and event log into a complete simulation run
 package sim
 
 import (
@@ -19,7 +19,7 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/trader"
 )
 
-// RunResult holds the output of a simulation run.
+// RunResult holds the output of a simulation run
 type RunResult struct {
 	RunID      string           `json:"run_id"`
 	Config     *scenario.Config `json:"config"`
@@ -31,7 +31,7 @@ type RunResult struct {
 	OutputDir  string           `json:"output_dir"`
 }
 
-// Runner executes a simulation.
+// Runner executes a simulation
 type Runner struct {
 	cfg       *scenario.Config
 	book      *orderbook.Book
@@ -41,17 +41,17 @@ type Runner struct {
 	fastAgent *trader.Agent
 	slowAgent *trader.Agent
 
-	// Current BBO for signal dispatch.
+	// Current BBO for signal dispatch
 	currentBBO *domain.BBO
 
-	// Collected trades.
+	// Collected trades
 	trades []domain.Trade
 
-	// Output directory.
+	// Output directory
 	outputDir string
 }
 
-// NewRunner creates a simulation runner.
+// NewRunner creates a simulation runner
 func NewRunner(cfg *scenario.Config, baseOutputDir string) (*Runner, error) {
 	runID := fmt.Sprintf("%s_seed%d", cfg.Name, cfg.Seed)
 	outputDir := filepath.Join(baseOutputDir, runID)
@@ -75,7 +75,7 @@ func NewRunner(cfg *scenario.Config, baseOutputDir string) (*Runner, error) {
 
 	r.loop = engine.NewEventLoop(r.handleEvent)
 
-	// Create trader agents with deterministic seeds derived from main seed.
+	// Create trader agents with deterministic seeds derived from main seed
 	fastLat := latency.NewModel(
 		latency.MsToNs(cfg.FastTrader.BaseLatencyMs),
 		latency.MsToNs(cfg.FastTrader.JitterMs),
@@ -93,7 +93,7 @@ func NewRunner(cfg *scenario.Config, baseOutputDir string) (*Runner, error) {
 	return r, nil
 }
 
-// Run executes the simulation and returns results.
+// Run executes the simulation and returns results
 func (r *Runner) Run() (*RunResult, error) {
 	startWall := time.Now()
 
@@ -108,7 +108,7 @@ func (r *Runner) Run() (*RunResult, error) {
 		r.loop.Schedule(e)
 	}
 
-	// Schedule periodic re-quote events for both traders.
+	// Schedule periodic re-quote events for both traders
 	reQuoteInterval := r.fastAgent.Strategy.ReQuoteIntervalNs
 	if reQuoteInterval > 0 {
 		for t := reQuoteInterval; t < r.cfg.Duration; t += reQuoteInterval {
@@ -165,7 +165,7 @@ func (r *Runner) Run() (*RunResult, error) {
 	}, nil
 }
 
-// handleEvent is the central event dispatcher.
+// handleEvent is the central event dispatcher
 func (r *Runner) handleEvent(event *domain.Event) []*domain.Event {
 	var newEvents []*domain.Event
 
@@ -183,13 +183,13 @@ func (r *Runner) handleEvent(event *domain.Event) []*domain.Event {
 		r.logEvent(event)
 
 	case domain.EventTradeExecuted, domain.EventBBOUpdate, domain.EventOrderCanceled:
-		// These are logged when produced; no further dispatch needed.
+		// These are logged when produced; no further dispatch needed
 	}
 
 	return newEvents
 }
 
-// handleOrder processes an incoming order through the matching engine.
+// handleOrder processes an incoming order through the matching engine
 func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 	order := event.Order
 	if order == nil {
@@ -202,16 +202,16 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 
 	r.book.AssertInvariants()
 
-	// Record queue position at placement for limit orders that rested.
+	// Record queue position at placement for limit orders that rested
 	if order.Type == domain.LimitOrder && order.RemainingQty > 0 {
 		order.QueuePos = r.book.QueuePosition(order.ID)
 	}
 
-	// Log accepted (after processing so QueuePos is populated).
+	// Log accepted (after processing so QueuePos is populated)
 	r.logEvent(event)
 
-	// Track trader active orders for limit orders that rest.
-	// Must be done BEFORE processing fills so the agent can look up the order.
+	// Track trader active orders for limit orders that rest
+	// Must be done BEFORE processing fills so the agent can look up the order
 	if order.Type == domain.LimitOrder {
 		if order.TraderID == r.fastAgent.ID {
 			r.fastAgent.ActiveOrders[order.ID] = order
@@ -228,7 +228,7 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 		}
 		r.logEvent(cancelEvent)
 
-		// Notify agents.
+		// Notify agents
 		if order.TraderID == r.fastAgent.ID {
 			r.fastAgent.OnCancelAck(order.CancelID)
 		} else if order.TraderID == r.slowAgent.ID {
@@ -247,7 +247,7 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 		}
 		r.logEvent(tradeEvent)
 
-		// Notify agents of fills.
+		// Notify agents of fills
 		if trade.BuyTrader == r.fastAgent.ID {
 			r.fastAgent.OnFill(trade, trade.BuyOrderID)
 		} else if trade.BuyTrader == r.slowAgent.ID {
@@ -260,7 +260,7 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 		}
 	}
 
-	// Log BBO update.
+	// Log BBO update
 	if bbo != nil {
 		r.currentBBO = bbo
 		bboEvent := &domain.Event{
@@ -274,22 +274,22 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 	return newEvents
 }
 
-// handleSignal dispatches a signal to both traders and schedules their responses.
+// handleSignal dispatches a signal to both traders and schedules their responses
 func (r *Runner) handleSignal(event *domain.Event) []*domain.Event {
 	signal := event.Signal
 	if signal == nil {
 		return nil
 	}
 
-	// Set mid price on signal from current BBO.
+	// Set mid price on signal from current BBO
 	signal.MidPrice = r.currentBBO.MidPrice
 
 	r.logEvent(event)
 
 	var newEvents []*domain.Event
 
-	// Both traders see the same signal at the same time.
-	// Their response is delayed by their latency.
+	// Both traders see the same signal at the same time
+	// Their response is delayed by their latency
 	fastOrders := r.fastAgent.OnSignal(signal, r.currentBBO, event.Timestamp)
 	for _, order := range fastOrders {
 		arrivalTime := r.fastAgent.Latency.Apply(order.DecisionTime)
@@ -315,7 +315,7 @@ func (r *Runner) handleSignal(event *domain.Event) []*domain.Event {
 	return newEvents
 }
 
-// handleReQuote processes a periodic re-quote event for a specific trader.
+// handleReQuote processes a periodic re-quote event for a specific trader
 func (r *Runner) handleReQuote(event *domain.Event) []*domain.Event {
 	if r.currentBBO.BidPrice == 0 || r.currentBBO.AskPrice == 0 {
 		return nil
@@ -330,7 +330,7 @@ func (r *Runner) handleReQuote(event *domain.Event) []*domain.Event {
 		return nil
 	}
 
-	// Create a neutral signal for re-quote (value=0 means no directional bias).
+	// Create a neutral signal for re-quote (value=0 means no directional bias)
 	neutralSignal := &domain.Signal{
 		Value:    0,
 		MidPrice: r.currentBBO.MidPrice,

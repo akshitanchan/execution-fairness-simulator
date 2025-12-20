@@ -1,4 +1,4 @@
-// Package eventlog provides an append-only JSON-lines event log writer and reader.
+// Package eventlog provides an append-only JSON-lines event log writer and reader
 package eventlog
 
 import (
@@ -11,14 +11,14 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/domain"
 )
 
-// Writer writes events as JSON lines to a file.
+// Writer writes events as JSON lines to a file
 type Writer struct {
 	file   *os.File
 	writer *bufio.Writer
 	count  uint64
 }
 
-// NewWriter creates a new event log writer at the given path.
+// NewWriter creates a new event log writer at the given path
 func NewWriter(path string) (*Writer, error) {
 	f, err := os.Create(path)
 	if err != nil {
@@ -30,7 +30,7 @@ func NewWriter(path string) (*Writer, error) {
 	}, nil
 }
 
-// Write appends an event to the log.
+// Write appends an event to the log
 func (w *Writer) Write(event *domain.Event) error {
 	data, err := json.Marshal(event)
 	if err != nil {
@@ -48,7 +48,7 @@ func (w *Writer) Write(event *domain.Event) error {
 	return nil
 }
 
-// Close flushes and closes the log file.
+// Close flushes and closes the log file
 func (w *Writer) Close() error {
 	if err := w.writer.Flush(); err != nil {
 		w.file.Close()
@@ -57,18 +57,18 @@ func (w *Writer) Close() error {
 	return w.file.Close()
 }
 
-// Count returns the number of events written.
+// Count returns the number of events written
 func (w *Writer) Count() uint64 {
 	return w.count
 }
 
-// Reader reads events from a JSON-lines event log.
+// Reader reads events from a JSON-lines event log
 type Reader struct {
 	file    *os.File
 	scanner *bufio.Scanner
 }
 
-// NewReader opens an event log for reading.
+// NewReader opens an event log for reading
 func NewReader(path string) (*Reader, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -82,7 +82,7 @@ func NewReader(path string) (*Reader, error) {
 	}, nil
 }
 
-// Next reads the next event. Returns nil, io.EOF at end of log.
+// Next reads the next event. Returns nil, io.EOF at end of log
 func (r *Reader) Next() (*domain.Event, error) {
 	if !r.scanner.Scan() {
 		if err := r.scanner.Err(); err != nil {
@@ -97,7 +97,7 @@ func (r *Reader) Next() (*domain.Event, error) {
 	return &event, nil
 }
 
-// ReadAll reads all events from the log.
+// ReadAll reads all events from the log
 func (r *Reader) ReadAll() ([]*domain.Event, error) {
 	var events []*domain.Event
 	for {
@@ -112,7 +112,7 @@ func (r *Reader) ReadAll() ([]*domain.Event, error) {
 	}
 }
 
-// Close closes the log file.
+// Close closes the log file
 func (r *Reader) Close() error {
 	return r.file.Close()
 }

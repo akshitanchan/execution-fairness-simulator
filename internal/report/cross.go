@@ -1,4 +1,4 @@
-// Package report — cross-scenario consolidated comparison.
+// Package report — cross-scenario consolidated comparison
 package report
 
 import (
@@ -12,25 +12,25 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/scenario"
 )
 
-// ScenarioResult bundles a config with its computed metrics.
+// ScenarioResult bundles a config with its computed metrics
 type ScenarioResult struct {
 	Config  *scenario.Config
 	Metrics map[string]*metrics.TraderMetrics
 	RunDir  string
 }
 
-// CrossReport generates a consolidated report comparing metrics across scenarios.
+// CrossReport generates a consolidated report comparing metrics across scenarios
 type CrossReport struct {
 	results []ScenarioResult
 	outDir  string
 }
 
-// NewCrossReport creates a cross-scenario report.
+// NewCrossReport creates a cross-scenario report
 func NewCrossReport(results []ScenarioResult, outDir string) *CrossReport {
 	return &CrossReport{results: results, outDir: outDir}
 }
 
-// Generate writes the consolidated report.
+// Generate writes the consolidated report
 func (cr *CrossReport) Generate() error {
 	if err := os.MkdirAll(cr.outDir, 0755); err != nil {
 		return fmt.Errorf("create output dir: %w", err)
@@ -42,7 +42,7 @@ func (cr *CrossReport) Generate() error {
 		return fmt.Errorf("write cross report: %w", err)
 	}
 
-	// Also save structured data.
+	// Also save structured data
 	dataPath := filepath.Join(cr.outDir, "cross-scenario-metrics.json")
 	data, _ := json.MarshalIndent(cr.buildSummary(), "", "  ")
 	return os.WriteFile(dataPath, data, 0644)
@@ -72,7 +72,7 @@ func (cr *CrossReport) renderMarkdown() string {
 	sb.WriteString("# Cross-Scenario Fairness Comparison\n\n")
 	sb.WriteString("This report consolidates results from multiple market scenarios to show how latency advantages vary with market conditions.\n\n")
 
-	// Summary table.
+	// Summary table
 	sb.WriteString("## Summary Table\n\n")
 	sb.WriteString("| Metric | ")
 	for _, r := range cr.results {
@@ -116,7 +116,7 @@ func (cr *CrossReport) renderMarkdown() string {
 	}
 	sb.WriteString("\n")
 
-	// Delta table (fast - slow).
+	// Delta table (fast - slow)
 	sb.WriteString("## Latency Impact (Fast − Slow)\n\n")
 	sb.WriteString("| Metric |")
 	for _, r := range cr.results {
@@ -144,7 +144,7 @@ func (cr *CrossReport) renderMarkdown() string {
 	}
 	sb.WriteString("\n")
 
-	// Cross-scenario analysis.
+	// Cross-scenario analysis
 	sb.WriteString("## Cross-Scenario Analysis\n\n")
 	sb.WriteString(cr.generateCrossAnalysis())
 
@@ -185,7 +185,7 @@ func (cr *CrossReport) generateCrossAnalysis() string {
 		return sb.String()
 	}
 
-	// Find scenario with largest fill rate gap.
+	// Find scenario with largest fill rate gap
 	maxFillScenario := deltas[0]
 	for _, d := range deltas[1:] {
 		if abs(d.fillDelta) > abs(maxFillScenario.fillDelta) {
@@ -197,7 +197,7 @@ func (cr *CrossReport) generateCrossAnalysis() string {
 		maxFillScenario.name, maxFillScenario.fillDelta))
 	sb.WriteString("indicating this market regime amplifies the latency advantage most for execution likelihood.\n")
 
-	// Find scenario with largest slippage gap.
+	// Find scenario with largest slippage gap
 	maxSlipScenario := deltas[0]
 	for _, d := range deltas[1:] {
 		if abs(d.slipDelta) > abs(maxSlipScenario.slipDelta) {
@@ -217,7 +217,7 @@ func (cr *CrossReport) generateCrossAnalysis() string {
 	return sb.String()
 }
 
-// PrintCrossSummary prints a condensed cross-scenario summary to stdout.
+// PrintCrossSummary prints a condensed cross-scenario summary to stdout
 func PrintCrossSummary(results []ScenarioResult) {
 	fmt.Println("\n=== Cross-Scenario Comparison ===")
 	fmt.Println()

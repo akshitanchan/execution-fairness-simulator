@@ -1,5 +1,5 @@
 // Package metrics collects per-trader execution quality metrics
-// from the event log and trade records.
+// from the event log and trade records
 package metrics
 
 import (
@@ -10,46 +10,46 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/eventlog"
 )
 
-// TraderMetrics holds computed metrics for a single trader.
+// TraderMetrics holds computed metrics for a single trader
 type TraderMetrics struct {
 	TraderID string `json:"trader_id"`
 
-	// Order counts.
+	// Order counts
 	OrdersSent   int `json:"orders_sent"`
 	LimitOrders  int `json:"limit_orders"`
 	MarketOrders int `json:"market_orders"`
 	CancelsSent  int `json:"cancels_sent"`
 
-	// Fill metrics.
+	// Fill metrics
 	TotalFills     int     `json:"total_fills"`
 	TotalQtyFilled int64   `json:"total_qty_filled"`
 	FillRate       float64 `json:"fill_rate"` // filled executable orders / executable orders
 
-	// Missed fill tracking.
+	// Missed fill tracking
 	CanceledBeforeFill int `json:"canceled_before_fill"` // orders canceled without any fill
 
-	// Price metrics.
+	// Price metrics
 	AvgExecPrice float64 `json:"avg_exec_price"`
 	AvgSlippage  float64 `json:"avg_slippage"` // vs mid at decision time
 	SlippageBps  float64 `json:"slippage_bps"` // in basis points
 
-	// Time metrics.
+	// Time metrics
 	AvgTimeToFillNs float64   `json:"avg_time_to_fill_ns"` // average time-to-fill in ms (legacy field name)
 	TimeToFillDist  []float64 `json:"time_to_fill_dist"`   // all time-to-fill values in ms
 
-	// Queue position metrics.
+	// Queue position metrics
 	AvgQueuePosPlace float64 `json:"avg_queue_pos_place"` // at placement
 	AvgQueuePosFill  float64 `json:"avg_queue_pos_fill"`  // at fill
 
-	// Adverse selection.
+	// Adverse selection
 	AvgPriceMoveAfterFill float64 `json:"avg_price_move_after_fill"` // in price units
 	AdverseSelectionBps   float64 `json:"adverse_selection_bps"`
 
-	// Raw data for plotting.
+	// Raw data for plotting
 	SlippageValues []float64 `json:"slippage_values,omitempty"`
 }
 
-// Collector accumulates metrics from events.
+// Collector accumulates metrics from events
 type Collector struct {
 	traderMetrics map[string]*traderAccum
 	bboHistory    []bboSnapshot
@@ -63,13 +63,13 @@ type traderAccum struct {
 	marketOrders int
 	cancelsSent  int
 
-	// Track orders for time-to-fill.
+	// Track orders for time-to-fill
 	orderTimes map[uint64]orderInfo // orderID -> info
 
-	// Track which orders have received fills.
+	// Track which orders have received fills
 	filledOrders map[uint64]bool // orderID -> filled
 
-	// Track cancel targets.
+	// Track cancel targets
 	cancelTargets []uint64 // orderIDs that were canceled
 
 	fills []fillInfo
@@ -104,7 +104,7 @@ type tradeRecord struct {
 	price     int64
 }
 
-// NewCollector creates a new metrics collector.
+// NewCollector creates a new metrics collector
 func NewCollector() *Collector {
 	return &Collector{
 		traderMetrics: make(map[string]*traderAccum),
@@ -124,7 +124,7 @@ func (c *Collector) getAccum(traderID string) *traderAccum {
 	return a
 }
 
-// ProcessEvent ingests a single event.
+// ProcessEvent ingests a single event
 func (c *Collector) ProcessEvent(event *domain.Event) {
 	switch event.Type {
 	case domain.EventOrderAccepted:
@@ -203,9 +203,9 @@ func (c *Collector) processTrade(event *domain.Event) {
 		price:     trade.Price,
 	})
 
-	// Record fill for the buyer.
+	// Record fill for the buyer
 	c.recordFill(trade.BuyTrader, trade.BuyOrderID, trade, event.Timestamp, domain.Buy)
-	// Record fill for the seller.
+	// Record fill for the seller
 	c.recordFill(trade.SellTrader, trade.SellOrderID, trade, event.Timestamp, domain.Sell)
 }
 
@@ -224,7 +224,7 @@ func (c *Collector) recordFill(traderID string, orderID uint64, trade *domain.Tr
 		midAtDecision = info.midAtDecision
 		decisionTime = info.decisionTime
 	}
-	// The resting queue position only applies to the passive order.
+	// The resting queue position only applies to the passive order
 	if trade.PassiveOrderID > 0 && orderID == trade.PassiveOrderID {
 		queuePosFill = trade.RestingQueuePos
 	}
@@ -240,12 +240,12 @@ func (c *Collector) recordFill(traderID string, orderID uint64, trade *domain.Tr
 	})
 }
 
-// midAtTime returns the mid price at a given time by searching BBO history.
+// midAtTime returns the mid price at a given time by searching BBO history
 func (c *Collector) midAtTime(t int64) int64 {
 	if len(c.bboHistory) == 0 {
 		return 0
 	}
-	// Binary search for the latest BBO before or at time t.
+	// Binary search for the latest BBO before or at time t
 	idx := sort.Search(len(c.bboHistory), func(i int) bool {
 		return c.bboHistory[i].timestamp > t
 	})
@@ -255,13 +255,13 @@ func (c *Collector) midAtTime(t int64) int64 {
 	return c.bboHistory[idx-1].bbo.MidPrice
 }
 
-// priceAfterDuration returns the mid price durationNs after fillTime.
+// priceAfterDuration returns the mid price durationNs after fillTime
 func (c *Collector) priceAfterDuration(fillTime int64, durationNs int64) int64 {
 	targetTime := fillTime + durationNs
 	return c.midAtTime(targetTime)
 }
 
-// Compute calculates final metrics for all tracked traders.
+// Compute calculates final metrics for all tracked traders
 func (c *Collector) Compute() map[string]*TraderMetrics {
 	result := make(map[string]*TraderMetrics)
 
@@ -275,7 +275,7 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 			TotalFills:   len(a.fills),
 		}
 
-		// Fill rate is order-level: executable orders with >=1 fill / executable orders.
+		// Fill rate is order-level: executable orders with >=1 fill / executable orders
 		totalExecutableOrders := len(a.orderTimes)
 		if totalExecutableOrders > 0 {
 			filledExecutableOrders := 0
@@ -296,7 +296,7 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 		var totalQueuePosFill float64
 		var queuePosFillCount int
 
-		// Compute average queue position at placement from order records.
+		// Compute average queue position at placement from order records
 		for _, info := range a.orderTimes {
 			if info.queuePosPlace > 0 {
 				totalQueuePosPlace += float64(info.queuePosPlace)
@@ -309,7 +309,7 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 			totalQty += qty
 			totalPrice += domain.PriceToFloat(fill.tradePrice) * float64(qty)
 
-			// Slippage: signed difference from mid at decision time.
+			// Slippage: signed difference from mid at decision time
 			if fill.midAtDecision > 0 {
 				var slippage float64
 				if fill.side == domain.Buy {
@@ -323,14 +323,14 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 				m.SlippageValues = append(m.SlippageValues, slippage)
 			}
 
-			// Time to fill.
+			// Time to fill
 			if fill.decisionTime > 0 {
 				ttf := float64(fill.fillTime-fill.decisionTime) / 1e6 // to ms
 				totalTimeToFill += ttf
 				m.TimeToFillDist = append(m.TimeToFillDist, ttf)
 			}
 
-			// Adverse selection: price move 100ms after fill.
+			// Adverse selection: price move 100ms after fill
 			priceAfter := c.priceAfterDuration(fill.fillTime, 100_000_000) // 100ms
 			if priceAfter > 0 && fill.tradePrice > 0 {
 				var move float64
@@ -344,7 +344,7 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 				m.AvgPriceMoveAfterFill += move
 			}
 
-			// Queue position at fill.
+			// Queue position at fill
 			if fill.queuePosFill > 0 {
 				totalQueuePosFill += float64(fill.queuePosFill)
 				queuePosFillCount++
@@ -372,7 +372,7 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 			}
 		}
 
-		// Queue position averages.
+		// Queue position averages
 		if queuePosPlaceCount > 0 {
 			m.AvgQueuePosPlace = totalQueuePosPlace / float64(queuePosPlaceCount)
 		}
@@ -380,14 +380,14 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 			m.AvgQueuePosFill = totalQueuePosFill / float64(queuePosFillCount)
 		}
 
-		// Canceled-before-fill: count cancel targets that were never filled.
+		// Canceled-before-fill: count cancel targets that were never filled
 		for _, canceledID := range a.cancelTargets {
 			if !a.filledOrders[canceledID] {
 				m.CanceledBeforeFill++
 			}
 		}
 
-		// Sort time-to-fill for CDF plotting.
+		// Sort time-to-fill for CDF plotting
 		sort.Float64s(m.TimeToFillDist)
 
 		result[traderID] = m
@@ -396,7 +396,7 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 	return result
 }
 
-// ComputeFromLog reads an event log and computes metrics.
+// ComputeFromLog reads an event log and computes metrics
 func ComputeFromLog(logPath string) (map[string]*TraderMetrics, error) {
 	reader, err := eventlog.NewReader(logPath)
 	if err != nil {
@@ -419,7 +419,7 @@ func ComputeFromLog(logPath string) (map[string]*TraderMetrics, error) {
 	return c.Compute(), nil
 }
 
-// ComputeFromEvents computes metrics directly from an in-memory event stream.
+// ComputeFromEvents computes metrics directly from an in-memory event stream
 func ComputeFromEvents(events []*domain.Event) map[string]*TraderMetrics {
 	c := NewCollector()
 	for _, event := range events {

@@ -10,7 +10,7 @@ import (
 )
 
 // TestIntegrationAllScenarios runs all scenarios end-to-end and checks
-// that the simulation produces meaningful results.
+// that the simulation produces meaningful results
 func TestIntegrationAllScenarios(t *testing.T) {
 	for _, name := range []string{"calm", "thin", "spike"} {
 		t.Run(name, func(t *testing.T) {
@@ -27,23 +27,23 @@ func TestIntegrationAllScenarios(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			// Must have processed events.
+			// Must have processed events
 			if result.EventCount == 0 {
 				t.Error("no events processed")
 			}
 
-			// Must have trades.
+			// Must have trades
 			if result.TradeCount == 0 {
 				t.Error("no trades")
 			}
 
-			// Must be able to compute metrics.
+			// Must be able to compute metrics
 			m, err := metrics.ComputeFromLog(result.LogPath)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			// Both traders must have metrics.
+			// Both traders must have metrics
 			fast, ok := m["fast"]
 			if !ok {
 				t.Fatal("no metrics for fast trader")
@@ -53,7 +53,7 @@ func TestIntegrationAllScenarios(t *testing.T) {
 				t.Fatal("no metrics for slow trader")
 			}
 
-			// Both must have sent orders.
+			// Both must have sent orders
 			if fast.OrdersSent == 0 {
 				t.Error("fast trader sent no orders")
 			}
@@ -61,7 +61,7 @@ func TestIntegrationAllScenarios(t *testing.T) {
 				t.Error("slow trader sent no orders")
 			}
 
-			// Both must have fills.
+			// Both must have fills
 			if fast.TotalFills == 0 {
 				t.Error("fast trader has no fills")
 			}
@@ -80,7 +80,7 @@ func TestIntegrationAllScenarios(t *testing.T) {
 }
 
 // TestLatencyImpactEvidence verifies the spec requirement that latency
-// changes produce measurable outcome differences.
+// changes produce measurable outcome differences
 func TestLatencyImpactEvidence(t *testing.T) {
 	measurableDiffs := 0
 
@@ -117,7 +117,7 @@ func TestLatencyImpactEvidence(t *testing.T) {
 			t.Logf("  Slippage delta: %.2f bps (fast - slow)", slippageDeltaBps)
 
 			// Moderate materiality threshold:
-			// |fill-rate delta| >= 5 pp OR |slippage delta| >= 0.5 bps.
+			// |fill-rate delta| >= 5 pp OR |slippage delta| >= 0.5 bps
 			if math.Abs(fillRateDeltaPP) >= 5 || math.Abs(slippageDeltaBps) >= 0.5 {
 				measurableDiffs++
 			}

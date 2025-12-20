@@ -1,5 +1,5 @@
 // Package domain defines the core types used across the simulation:
-// orders, trades, events, and supporting enums/constants.
+// orders, trades, events, and supporting enums/constants
 package domain
 
 import (
@@ -8,22 +8,22 @@ import (
 )
 
 // --- Price representation ---
-// Prices are fixed-point int64 with 4 decimal places.
-// e.g. $100.0050 is stored as 1_000_050.
+// Prices are fixed-point int64 with 4 decimal places
+// e.g. $100.0050 is stored as 1_000_050
 
 const PriceScale = 10_000
 
-// PriceToFloat converts a fixed-point price to float64 for display.
+// PriceToFloat converts a fixed-point price to float64 for display
 func PriceToFloat(p int64) float64 {
 	return float64(p) / float64(PriceScale)
 }
 
-// FloatToPrice converts a float64 to fixed-point price.
+// FloatToPrice converts a float64 to fixed-point price
 func FloatToPrice(f float64) int64 {
 	return int64(f * float64(PriceScale))
 }
 
-// FormatPrice returns a human-readable price string.
+// FormatPrice returns a human-readable price string
 func FormatPrice(p int64) string {
 	return fmt.Sprintf("%.4f", PriceToFloat(p))
 }
@@ -48,12 +48,12 @@ func (s Side) Opposite() Side {
 	return -s
 }
 
-// MarshalJSON serializes Side as a human-readable string.
+// MarshalJSON serializes Side as a human-readable string
 func (s Side) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + s.String() + `"`), nil
 }
 
-// UnmarshalJSON deserializes Side from a string or integer.
+// UnmarshalJSON deserializes Side from a string or integer
 func (s *Side) UnmarshalJSON(data []byte) error {
 	str := strings.Trim(string(data), `"`)
 	switch str {
@@ -88,12 +88,12 @@ func (t OrderType) String() string {
 	}
 }
 
-// MarshalJSON serializes OrderType as a human-readable string.
+// MarshalJSON serializes OrderType as a human-readable string
 func (t OrderType) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + t.String() + `"`), nil
 }
 
-// UnmarshalJSON deserializes OrderType from a string or integer.
+// UnmarshalJSON deserializes OrderType from a string or integer
 func (t *OrderType) UnmarshalJSON(data []byte) error {
 	str := strings.Trim(string(data), `"`)
 	switch str {
@@ -145,12 +145,12 @@ func (e EventType) String() string {
 	}
 }
 
-// MarshalJSON serializes EventType as a human-readable string.
+// MarshalJSON serializes EventType as a human-readable string
 func (e EventType) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + e.String() + `"`), nil
 }
 
-// UnmarshalJSON deserializes EventType from a string or integer.
+// UnmarshalJSON deserializes EventType from a string or integer
 func (e *EventType) UnmarshalJSON(data []byte) error {
 	str := strings.Trim(string(data), `"`)
 	switch str {
@@ -178,7 +178,7 @@ func (e *EventType) UnmarshalJSON(data []byte) error {
 
 // --- Core structures ---
 
-// Order represents a limit, market, or cancel instruction.
+// Order represents a limit, market, or cancel instruction
 type Order struct {
 	ID           uint64    `json:"id"`
 	TraderID     string    `json:"trader_id"`
@@ -194,12 +194,12 @@ type Order struct {
 	QueuePos     int       `json:"queue_pos,omitempty"` // 1-based queue position at placement
 }
 
-// IsFilled returns true if the order has been fully filled.
+// IsFilled returns true if the order has been fully filled
 func (o *Order) IsFilled() bool {
 	return o.RemainingQty <= 0
 }
 
-// Trade represents a matched execution.
+// Trade represents a matched execution
 type Trade struct {
 	ID          uint64 `json:"id"`
 	BuyOrderID  uint64 `json:"buy_order_id"`
@@ -209,14 +209,14 @@ type Trade struct {
 	Price       int64  `json:"price"`
 	Qty         int64  `json:"qty"`
 	Timestamp   int64  `json:"timestamp"`
-	// Explicit passive/aggressor identity for attribution in analytics.
+	// Explicit passive/aggressor identity for attribution in analytics
 	PassiveOrderID   uint64 `json:"passive_order_id,omitempty"`
 	AggressorOrderID uint64 `json:"aggressor_order_id,omitempty"`
-	// Queue position of the resting (passive) order at fill time.
+	// Queue position of the resting (passive) order at fill time
 	RestingQueuePos int `json:"resting_queue_pos,omitempty"`
 }
 
-// BBO represents best bid and offer snapshot.
+// BBO represents best bid and offer snapshot
 type BBO struct {
 	BidPrice int64 `json:"bid_price"`
 	BidQty   int64 `json:"bid_qty"`
@@ -225,20 +225,20 @@ type BBO struct {
 	MidPrice int64 `json:"mid_price"` // (bid+ask)/2
 }
 
-// Signal represents a trading signal broadcast to all traders.
+// Signal represents a trading signal broadcast to all traders
 type Signal struct {
 	Value    float64 `json:"value"`     // signal strength / direction
 	MidPrice int64   `json:"mid_price"` // mid at signal time
 }
 
-// Event is the core unit in the event loop and event log.
+// Event is the core unit in the event loop and event log
 type Event struct {
 	SeqNo     uint64    `json:"seq_no"`
 	Timestamp int64     `json:"timestamp"`
 	Type      EventType `json:"type"`
 	TraderID  string    `json:"trader_id,omitempty"` // set for trader-specific events (e.g. re-quote)
 
-	// Exactly one of these is set depending on Type.
+	// Exactly one of these is set depending on Type
 	Order  *Order  `json:"order,omitempty"`
 	Trade  *Trade  `json:"trade,omitempty"`
 	BBO    *BBO    `json:"bbo,omitempty"`

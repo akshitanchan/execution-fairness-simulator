@@ -1,4 +1,4 @@
-// Package report generates the fairness comparison report.
+// Package report generates the fairness comparison report
 package report
 
 import (
@@ -14,7 +14,7 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/scenario"
 )
 
-// Report generates and writes the fairness report.
+// Report generates and writes the fairness report
 type Report struct {
 	config *scenario.Config
 	fast   *metrics.TraderMetrics
@@ -22,7 +22,7 @@ type Report struct {
 	outDir string
 }
 
-// NewReport creates a report generator.
+// NewReport creates a report generator
 func NewReport(cfg *scenario.Config, metricsMap map[string]*metrics.TraderMetrics, outDir string) *Report {
 	return &Report{
 		config: cfg,
@@ -32,9 +32,9 @@ func NewReport(cfg *scenario.Config, metricsMap map[string]*metrics.TraderMetric
 	}
 }
 
-// Generate produces the full report.
+// Generate produces the full report
 func (r *Report) Generate() error {
-	// Save metrics as JSON.
+	// Save metrics as JSON
 	metricsPath := filepath.Join(r.outDir, "metrics.json")
 	metricsData, _ := json.MarshalIndent(map[string]*metrics.TraderMetrics{
 		"fast": r.fast,
@@ -44,14 +44,14 @@ func (r *Report) Generate() error {
 		return fmt.Errorf("write metrics: %w", err)
 	}
 
-	// Generate text/markdown report.
+	// Generate text/markdown report
 	reportPath := filepath.Join(r.outDir, "report.md")
 	content := r.renderMarkdown()
 	if err := os.WriteFile(reportPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("write report: %w", err)
 	}
 
-	// Generate ASCII plots in a separate plots.txt artifact.
+	// Generate ASCII plots in a separate plots.txt artifact
 	plotPath := filepath.Join(r.outDir, "plots.txt")
 	plots := r.renderPlots()
 	if err := os.WriteFile(plotPath, []byte(plots), 0644); err != nil {
@@ -67,7 +67,7 @@ func (r *Report) renderMarkdown() string {
 	sb.WriteString("# Execution Fairness Report\n\n")
 	sb.WriteString(fmt.Sprintf("**Scenario:** %s | **Seed:** %d\n\n", r.config.Name, r.config.Seed))
 
-	// Latency config table.
+	// Latency config table
 	sb.WriteString("## Latency Configuration\n\n")
 	sb.WriteString("| Trader | Base Latency (ms) | Jitter (ms) |\n")
 	sb.WriteString("|--------|-------------------|-------------|\n")
@@ -76,7 +76,7 @@ func (r *Report) renderMarkdown() string {
 	sb.WriteString(fmt.Sprintf("| slow   | %d               | %d         |\n\n",
 		r.config.SlowTrader.BaseLatencyMs, r.config.SlowTrader.JitterMs))
 
-	// Side-by-side metrics.
+	// Side-by-side metrics
 	sb.WriteString("## Execution Metrics\n\n")
 	sb.WriteString("| Metric | Fast | Slow | Delta |\n")
 	sb.WriteString("|--------|------|------|-------|\n")
@@ -98,7 +98,7 @@ func (r *Report) renderMarkdown() string {
 	}
 	sb.WriteString("\n")
 
-	// Time-to-fill distribution summary.
+	// Time-to-fill distribution summary
 	sb.WriteString("## Time-to-Fill Distribution (ms)\n\n")
 	sb.WriteString("| Percentile | Fast | Slow |\n")
 	sb.WriteString("|------------|------|------|\n")
@@ -111,7 +111,7 @@ func (r *Report) renderMarkdown() string {
 	}
 	sb.WriteString("\n")
 
-	// Explanation section.
+	// Explanation section
 	sb.WriteString("## Fairness Analysis\n\n")
 	sb.WriteString(r.generateExplanation())
 
@@ -137,7 +137,7 @@ func (r *Report) generateExplanation() string {
 		return sb.String()
 	}
 
-	// 1. Arrival order differences.
+	// 1. Arrival order differences
 	sb.WriteString("### Message Arrival Ordering\n\n")
 	latencyDiff := r.config.SlowTrader.BaseLatencyMs - r.config.FastTrader.BaseLatencyMs
 	sb.WriteString(fmt.Sprintf("The fast trader's messages arrive **%d ms** earlier than the slow trader's. ",
@@ -145,7 +145,7 @@ func (r *Report) generateExplanation() string {
 	sb.WriteString("This means when both traders react to the same signal, the fast trader's order is ")
 	sb.WriteString("processed first—securing better queue position at the intended price level.\n\n")
 
-	// Queue position data.
+	// Queue position data
 	if r.fast.AvgQueuePosPlace > 0 || r.slow.AvgQueuePosPlace > 0 {
 		sb.WriteString(fmt.Sprintf("**Queue position at placement**: fast = %.1f, slow = %.1f. ",
 			r.fast.AvgQueuePosPlace, r.slow.AvgQueuePosPlace))
@@ -162,7 +162,7 @@ func (r *Report) generateExplanation() string {
 		sb.WriteString("A lower fill queue position means the order was nearer the front when it executed.\n\n")
 	}
 
-	// 2. Fill rate analysis.
+	// 2. Fill rate analysis
 	sb.WriteString("### Fill Rate Impact\n\n")
 	fillDelta := (r.fast.FillRate - r.slow.FillRate) * 100
 	if math.Abs(fillDelta) > 1.0 {
@@ -184,7 +184,7 @@ func (r *Report) generateExplanation() string {
 		sb.WriteString("was sufficient to absorb both traders' orders most of the time.\n\n")
 	}
 
-	// Missed fills analysis.
+	// Missed fills analysis
 	sb.WriteString("### Missed Fills\n\n")
 	sb.WriteString(fmt.Sprintf("Orders canceled without any fill — fast: **%d**, slow: **%d**.\n",
 		r.fast.CanceledBeforeFill, r.slow.CanceledBeforeFill))
@@ -201,7 +201,7 @@ func (r *Report) generateExplanation() string {
 		sb.WriteString("Both traders show similar missed-fill counts in this scenario.\n\n")
 	}
 
-	// 3. Slippage analysis.
+	// 3. Slippage analysis
 	sb.WriteString("### Slippage Analysis\n\n")
 	slipDelta := r.fast.SlippageBps - r.slow.SlippageBps
 	sb.WriteString(fmt.Sprintf("Fast trader slippage: **%.2f bps** | Slow trader slippage: **%.2f bps** (delta: %+.2f bps)\n\n",
@@ -213,7 +213,7 @@ func (r *Report) generateExplanation() string {
 		sb.WriteString("- Execute market orders before adverse book movements.\n\n")
 	}
 
-	// 4. Adverse selection.
+	// 4. Adverse selection
 	sb.WriteString("### Adverse Selection\n\n")
 	sb.WriteString(fmt.Sprintf("Fast trader: **%.2f bps** | Slow trader: **%.2f bps**\n\n",
 		r.fast.AdverseSelectionBps, r.slow.AdverseSelectionBps))
@@ -227,7 +227,7 @@ func (r *Report) generateExplanation() string {
 		sb.WriteString("are not strongly correlated with arrival timing in this scenario.\n\n")
 	}
 
-	// 5. Time-to-fill.
+	// 5. Time-to-fill
 	sb.WriteString("### Time-to-Fill\n\n")
 	if r.fast.AvgTimeToFillNs > 0 && r.slow.AvgTimeToFillNs > 0 {
 		ttfRatio := r.slow.AvgTimeToFillNs / r.fast.AvgTimeToFillNs
@@ -237,7 +237,7 @@ func (r *Report) generateExplanation() string {
 		sb.WriteString("later arrival → worse queue position → longer wait for fills.\n\n")
 	}
 
-	// 6. Scenario-specific notes.
+	// 6. Scenario-specific notes
 	sb.WriteString("### Scenario Context: " + r.config.Name + "\n\n")
 	switch r.config.Name {
 	case "calm":
@@ -290,7 +290,7 @@ func (r *Report) renderPlots() string {
 	return sb.String()
 }
 
-// asciiHistogram draws a simple text histogram.
+// asciiHistogram draws a simple text histogram
 func asciiHistogram(values []float64, bins int) string {
 	if len(values) == 0 {
 		return "  (no data)\n"
@@ -340,7 +340,7 @@ func asciiHistogram(values []float64, bins int) string {
 	return sb.String()
 }
 
-// asciiCDF draws a simple text CDF.
+// asciiCDF draws a simple text CDF
 func asciiCDF(sorted []float64) string {
 	if len(sorted) == 0 {
 		return "  (no data)\n"
@@ -372,7 +372,7 @@ func percentile(sorted []float64, p float64) float64 {
 	return sorted[lower]*(1-frac) + sorted[upper]*frac
 }
 
-// PrintSummary writes a brief summary to stdout.
+// PrintSummary writes a brief summary to stdout
 func PrintSummary(cfg *scenario.Config, m map[string]*metrics.TraderMetrics) {
 	fast := m[cfg.FastTrader.ID]
 	slow := m[cfg.SlowTrader.ID]

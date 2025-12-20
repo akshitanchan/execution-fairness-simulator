@@ -7,7 +7,7 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/domain"
 )
 
-// backgroundGen is the common background order flow generator.
+// backgroundGen is the common background order flow generator
 type backgroundGen struct {
 	cfg    *Config
 	rng    *rand.Rand
@@ -42,7 +42,7 @@ func (g *backgroundGen) randSide() domain.Side {
 	return domain.Sell
 }
 
-// generateInitialBook creates initial resting limit orders to seed the book.
+// generateInitialBook creates initial resting limit orders to seed the book
 func (g *backgroundGen) generateInitialBook() []*domain.Event {
 	p := g.cfg.Scenario
 	var events []*domain.Event
@@ -51,7 +51,7 @@ func (g *backgroundGen) generateInitialBook() []*domain.Event {
 	bestBid := p.InitialMidPrice - halfSpread
 	bestAsk := p.InitialMidPrice + halfSpread
 
-	// Populate bid levels.
+	// Populate bid levels
 	for lvl := 0; lvl < p.MaxPriceLevels; lvl++ {
 		price := bestBid - int64(lvl)*p.PriceTickSize
 		for i := int64(0); i < p.DepthPerLevel; i++ {
@@ -72,7 +72,7 @@ func (g *backgroundGen) generateInitialBook() []*domain.Event {
 		}
 	}
 
-	// Populate ask levels.
+	// Populate ask levels
 	for lvl := 0; lvl < p.MaxPriceLevels; lvl++ {
 		price := bestAsk + int64(lvl)*p.PriceTickSize
 		for i := int64(0); i < p.DepthPerLevel; i++ {
@@ -96,7 +96,7 @@ func (g *backgroundGen) generateInitialBook() []*domain.Event {
 	return events
 }
 
-// generateSignals creates periodic signal events.
+// generateSignals creates periodic signal events
 func (g *backgroundGen) generateSignals() []*domain.Event {
 	var events []*domain.Event
 	interval := g.cfg.Scenario.SignalIntervalNs
@@ -105,7 +105,7 @@ func (g *backgroundGen) generateSignals() []*domain.Event {
 	}
 
 	for t := interval; t < g.cfg.Duration; t += interval {
-		// Signal value is sampled from N(0, 0.5^2).
+		// Signal value is sampled from N(0, 0.5^2)
 		value := g.rng.NormFloat64() * 0.5
 		events = append(events, &domain.Event{
 			Timestamp: t,
@@ -118,7 +118,7 @@ func (g *backgroundGen) generateSignals() []*domain.Event {
 	return events
 }
 
-// CalmGenerator produces steady-state background order flow.
+// CalmGenerator produces steady-state background order flow
 type CalmGenerator struct {
 	*backgroundGen
 }
@@ -135,7 +135,7 @@ func (g *CalmGenerator) Generate() []*domain.Event {
 	var restingIDs []uint64 // track IDs for potential cancels
 
 	for t := p.OrderIntervalNs; t < g.cfg.Duration; t += p.OrderIntervalNs {
-		// Small random timing jitter.
+		// Small random timing jitter
 		jitter := g.rng.Int63n(p.OrderIntervalNs / 2)
 		eventTime := t + jitter
 
@@ -143,11 +143,11 @@ func (g *CalmGenerator) Generate() []*domain.Event {
 			break
 		}
 
-		// Decide: cancel, market, or limit.
+		// Decide: cancel, market, or limit
 		roll := g.rng.Float64()
 
 		if roll < p.CancelRate && len(restingIDs) > 0 {
-			// Cancel a random resting order.
+			// Cancel a random resting order
 			idx := g.rng.Intn(len(restingIDs))
 			cancelID := restingIDs[idx]
 			restingIDs = append(restingIDs[:idx], restingIDs[idx+1:]...)
@@ -164,7 +164,7 @@ func (g *CalmGenerator) Generate() []*domain.Event {
 				},
 			})
 		} else if roll < p.CancelRate+p.MarketOrderRatio {
-			// Market order.
+			// Market order
 			id := g.nextOrderID()
 			events = append(events, &domain.Event{
 				Timestamp: eventTime,
@@ -178,10 +178,10 @@ func (g *CalmGenerator) Generate() []*domain.Event {
 				},
 			})
 		} else {
-			// Limit order near the mid.
+			// Limit order near the mid
 			id := g.nextOrderID()
 			side := g.randSide()
-			// Place within a few ticks of mid.
+			// Place within a few ticks of mid
 			offset := g.rng.Int63n(int64(p.MaxPriceLevels)) * p.PriceTickSize
 			var price int64
 			if side == domain.Buy {
@@ -207,7 +207,7 @@ func (g *CalmGenerator) Generate() []*domain.Event {
 		}
 	}
 
-	// Sort by timestamp for deterministic processing.
+	// Sort by timestamp for deterministic processing
 	sort.SliceStable(events, func(i, j int) bool {
 		return events[i].Timestamp < events[j].Timestamp
 	})
@@ -215,7 +215,7 @@ func (g *CalmGenerator) Generate() []*domain.Event {
 	return events
 }
 
-// ThinGenerator produces low-depth order flow with sporadic sweeps.
+// ThinGenerator produces low-depth order flow with sporadic sweeps
 type ThinGenerator struct {
 	*backgroundGen
 }
@@ -257,7 +257,7 @@ func (g *ThinGenerator) Generate() []*domain.Event {
 				},
 			})
 		} else if roll < p.CancelRate+p.MarketOrderRatio {
-			// Sporadic market sweep — larger size to move price.
+			// Sporadic market sweep — larger size to move price
 			id := g.nextOrderID()
 			sweepSize := g.randSize() * 2 // larger to cause slippage
 			events = append(events, &domain.Event{
@@ -272,7 +272,7 @@ func (g *ThinGenerator) Generate() []*domain.Event {
 				},
 			})
 		} else {
-			// Limit order — thin depth.
+			// Limit order — thin depth
 			id := g.nextOrderID()
 			side := g.randSide()
 			offset := g.rng.Int63n(int64(p.MaxPriceLevels)) * p.PriceTickSize
@@ -306,7 +306,7 @@ func (g *ThinGenerator) Generate() []*domain.Event {
 	return events
 }
 
-// SpikeGenerator produces order flow with periodic burst windows.
+// SpikeGenerator produces order flow with periodic burst windows
 type SpikeGenerator struct {
 	*backgroundGen
 }
@@ -322,7 +322,7 @@ func (g *SpikeGenerator) Generate() []*domain.Event {
 	p := g.cfg.Scenario
 	var restingIDs []uint64
 
-	// Determine burst windows.
+	// Determine burst windows
 	type window struct{ start, end int64 }
 	var bursts []window
 	if p.BurstIntervalNs > 0 && p.BurstWindowNs > 0 {
@@ -340,7 +340,7 @@ func (g *SpikeGenerator) Generate() []*domain.Event {
 		return false
 	}
 
-	// During bursts, interval is reduced by BurstRate.
+	// During bursts, interval is reduced by BurstRate
 	t := p.OrderIntervalNs
 	for t < g.cfg.Duration {
 		interval := p.OrderIntervalNs
@@ -442,7 +442,7 @@ func (g *SpikeGenerator) Generate() []*domain.Event {
 	return events
 }
 
-// NewGenerator creates the appropriate generator for a config.
+// NewGenerator creates the appropriate generator for a config
 func NewGenerator(cfg *Config) Generator {
 	switch cfg.Name {
 	case "calm":

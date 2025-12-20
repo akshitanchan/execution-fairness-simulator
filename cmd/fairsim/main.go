@@ -114,7 +114,7 @@ func runReplay(args []string) error {
 	fmt.Println("\nMetrics Summary (Replay):")
 	report.PrintSummary(cfg, metricsByTrader)
 
-	// Deterministically regenerate the run and compare event-log hashes.
+	// Deterministically regenerate the run and compare event-log hashes
 	tmpDir, err := os.MkdirTemp("", "fairsim-replay-*")
 	if err != nil {
 		return fmt.Errorf("create temp directory for deterministic replay: %w", err)

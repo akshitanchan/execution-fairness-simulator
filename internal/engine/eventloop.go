@@ -1,4 +1,4 @@
-// Package engine provides a deterministic discrete-event simulation loop.
+// Package engine provides a deterministic discrete-event simulation loop
 package engine
 
 import (
@@ -7,10 +7,10 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/domain"
 )
 
-// EventHandler processes an event and may return new events to enqueue.
+// EventHandler processes an event and may return new events to enqueue
 type EventHandler func(event *domain.Event) []*domain.Event
 
-// eventHeap is a min-heap of events ordered by (Timestamp, SeqNo).
+// eventHeap is a min-heap of events ordered by (Timestamp, SeqNo)
 type eventHeap []*domain.Event
 
 func (h eventHeap) Len() int      { return len(h) }
@@ -35,7 +35,7 @@ func (h *eventHeap) Pop() interface{} {
 	return item
 }
 
-// EventLoop is the deterministic simulation event loop.
+// EventLoop is the deterministic simulation event loop
 type EventLoop struct {
 	queue   eventHeap
 	seqNo   uint64
@@ -46,7 +46,7 @@ type EventLoop struct {
 	CurrentTime     int64
 }
 
-// NewEventLoop creates a new event loop with the given handler.
+// NewEventLoop creates a new event loop with the given handler
 func NewEventLoop(handler EventHandler) *EventLoop {
 	el := &EventLoop{
 		handler: handler,
@@ -55,21 +55,21 @@ func NewEventLoop(handler EventHandler) *EventLoop {
 	return el
 }
 
-// Schedule adds an event to the priority queue.
-// The event's SeqNo is set automatically for deterministic ordering.
+// Schedule adds an event to the priority queue
+// The event's SeqNo is set automatically for deterministic ordering
 func (el *EventLoop) Schedule(event *domain.Event) {
 	el.seqNo++
 	event.SeqNo = el.seqNo
 	heap.Push(&el.queue, event)
 }
 
-// ScheduleWithSeqNo adds an event with a pre-assigned SeqNo.
-// Use only when replaying from a log.
+// ScheduleWithSeqNo adds an event with a pre-assigned SeqNo
+// Use only when replaying from a log
 func (el *EventLoop) ScheduleWithSeqNo(event *domain.Event) {
 	heap.Push(&el.queue, event)
 }
 
-// Run processes events until the queue is empty.
+// Run processes events until the queue is empty
 func (el *EventLoop) Run() {
 	for el.queue.Len() > 0 {
 		event := heap.Pop(&el.queue).(*domain.Event)
@@ -83,11 +83,11 @@ func (el *EventLoop) Run() {
 	}
 }
 
-// RunUntil processes events until the given timestamp (inclusive).
-// Returns true if the queue still has events.
+// RunUntil processes events until the given timestamp (inclusive)
+// Returns true if the queue still has events
 func (el *EventLoop) RunUntil(maxTime int64) bool {
 	for el.queue.Len() > 0 {
-		// Peek at the next event.
+		// Peek at the next event
 		next := el.queue[0]
 		if next.Timestamp > maxTime {
 			return true
@@ -105,7 +105,7 @@ func (el *EventLoop) RunUntil(maxTime int64) bool {
 	return false
 }
 
-// Pending returns the number of events still in the queue.
+// Pending returns the number of events still in the queue
 func (el *EventLoop) Pending() int {
 	return el.queue.Len()
 }

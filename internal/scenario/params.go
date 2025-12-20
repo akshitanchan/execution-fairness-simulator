@@ -1,4 +1,4 @@
-// Package scenario defines scenario parameters and the generator interface.
+// Package scenario defines scenario parameters and the generator interface
 package scenario
 
 import (
@@ -6,7 +6,7 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/latency"
 )
 
-// Config holds all parameters for a simulation run.
+// Config holds all parameters for a simulation run
 type Config struct {
 	Name     string `json:"name"`
 	Seed     int64  `json:"seed"`
@@ -20,14 +20,14 @@ type Config struct {
 	Scenario ScenarioParams `json:"scenario"`
 }
 
-// TraderConfig holds trader-specific parameters.
+// TraderConfig holds trader-specific parameters
 type TraderConfig struct {
 	ID           string `json:"id"`
 	BaseLatencyMs int64 `json:"base_latency_ms"`
 	JitterMs      int64 `json:"jitter_ms"`
 }
 
-// ScenarioParams holds background order flow parameters.
+// ScenarioParams holds background order flow parameters
 type ScenarioParams struct {
 	InitialMidPrice     int64   `json:"initial_mid_price"`    // fixed-point
 	InitialSpread       int64   `json:"initial_spread"`       // fixed-point
@@ -54,13 +54,13 @@ type ScenarioParams struct {
 	BurstMarketCap  float64 `json:"burst_market_cap,omitempty"` // max market ratio during bursts
 }
 
-// Generator produces background order flow events.
+// Generator produces background order flow events
 type Generator interface {
-	// Generate returns all background events for the scenario duration.
+	// Generate returns all background events for the scenario duration
 	Generate() []*domain.Event
 }
 
-// DefaultCalm returns the default configuration for a calm market scenario.
+// DefaultCalm returns the default configuration for a calm market scenario
 func DefaultCalm(seed int64) *Config {
 	return &Config{
 		Name:     "calm",
@@ -92,7 +92,7 @@ func DefaultCalm(seed int64) *Config {
 	}
 }
 
-// DefaultThin returns the default configuration for a thin book scenario.
+// DefaultThin returns the default configuration for a thin book scenario
 func DefaultThin(seed int64) *Config {
 	return &Config{
 		Name:     "thin",
@@ -124,7 +124,7 @@ func DefaultThin(seed int64) *Config {
 	}
 }
 
-// DefaultSpike returns the default configuration for a burst/spike scenario.
+// DefaultSpike returns the default configuration for a burst/spike scenario
 func DefaultSpike(seed int64) *Config {
 	return &Config{
 		Name:     "spike",
@@ -164,7 +164,7 @@ func DefaultSpike(seed int64) *Config {
 	}
 }
 
-// GetConfig returns the default config for a named scenario.
+// GetConfig returns the default config for a named scenario
 func GetConfig(name string, seed int64) *Config {
 	switch name {
 	case "calm":

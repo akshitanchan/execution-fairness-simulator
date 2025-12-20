@@ -1,5 +1,5 @@
 // Package trader implements trading agents that react to signals
-// with configurable latency.
+// with configurable latency
 package trader
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/latency"
 )
 
-// Agent represents a trader with latency and a strategy.
+// Agent represents a trader with latency and a strategy
 type Agent struct {
 	ID       string
 	Latency  *latency.Model
@@ -20,11 +20,11 @@ type Agent struct {
 	nextID   uint64
 	idBase   uint64
 
-	// Active orders this agent has on the book.
+	// Active orders this agent has on the book
 	ActiveOrders map[uint64]*domain.Order
 }
 
-// NewAgent creates a new trading agent.
+// NewAgent creates a new trading agent
 func NewAgent(id string, lat *latency.Model, seed int64, idBase uint64) *Agent {
 	return &Agent{
 		ID:           id,
@@ -42,8 +42,8 @@ func (a *Agent) allocateID() uint64 {
 	return a.nextID
 }
 
-// OnSignal processes a signal event and returns orders to submit.
-// The orders have DecisionTime set; the caller applies latency to get ArrivalTime.
+// OnSignal processes a signal event and returns orders to submit
+// The orders have DecisionTime set; the caller applies latency to get ArrivalTime
 func (a *Agent) OnSignal(signal *domain.Signal, bbo *domain.BBO, currentTime int64) []*domain.Order {
 	if bbo.BidPrice == 0 || bbo.AskPrice == 0 {
 		return nil // no market to trade against
@@ -52,9 +52,9 @@ func (a *Agent) OnSignal(signal *domain.Signal, bbo *domain.BBO, currentTime int
 	return a.Strategy.Decide(a, signal, bbo, currentTime)
 }
 
-// OnFill notifies the agent that one of its orders was filled.
+// OnFill notifies the agent that one of its orders was filled
 // Note: RemainingQty is already updated by the matching engine since
-// we share the same *Order pointer. We only clean up ActiveOrders.
+// we share the same *Order pointer. We only clean up ActiveOrders
 func (a *Agent) OnFill(trade *domain.Trade, orderID uint64) {
 	order, exists := a.ActiveOrders[orderID]
 	if !exists {
@@ -65,27 +65,27 @@ func (a *Agent) OnFill(trade *domain.Trade, orderID uint64) {
 	}
 }
 
-// OnCancel notifies the agent that one of its orders was cancelled.
+// OnCancel notifies the agent that one of its orders was cancelled
 func (a *Agent) OnCancelAck(orderID uint64) {
 	delete(a.ActiveOrders, orderID)
 }
 
-// Strategy defines the simple post-at-best + rebalance logic.
+// Strategy defines the simple post-at-best + rebalance logic
 type Strategy struct {
-	// ReQuoteInterval: how long to wait before re-quoting (in nanos).
+	// ReQuoteInterval: how long to wait before re-quoting (in nanos)
 	ReQuoteIntervalNs int64
-	// CancelTimeoutNs: cancel unfilled orders after this duration.
+	// CancelTimeoutNs: cancel unfilled orders after this duration
 	CancelTimeoutNs int64
-	// CrossThreshold: if signal exceeds this, cross with market order.
+	// CrossThreshold: if signal exceeds this, cross with market order
 	CrossThreshold float64
-	// TargetQty: quantity to post.
+	// TargetQty: quantity to post
 	TargetQty int64
 
 	lastSignalValue float64
 	lastActionTime  int64
 }
 
-// NewStrategy creates a strategy with default parameters.
+// NewStrategy creates a strategy with default parameters
 func NewStrategy() *Strategy {
 	return &Strategy{
 		ReQuoteIntervalNs: latency.MsToNs(100),
@@ -95,12 +95,12 @@ func NewStrategy() *Strategy {
 	}
 }
 
-// Decide generates orders based on the current signal and book state.
+// Decide generates orders based on the current signal and book state
 func (s *Strategy) Decide(agent *Agent, signal *domain.Signal, bbo *domain.BBO, currentTime int64) []*domain.Order {
 	var orders []*domain.Order
 
-	// 1. Cancel stale orders that have been resting too long.
-	// Sort keys for deterministic iteration.
+	// 1. Cancel stale orders that have been resting too long
+	// Sort keys for deterministic iteration
 	activeIDs := make([]uint64, 0, len(agent.ActiveOrders))
 	for id := range agent.ActiveOrders {
 		activeIDs = append(activeIDs, id)
@@ -121,8 +121,8 @@ func (s *Strategy) Decide(agent *Agent, signal *domain.Signal, bbo *domain.BBO, 
 		}
 	}
 
-	// 2. Decide action based on signal.
-	// Strong signal → cross with market order.
+	// 2. Decide action based on signal
+	// Strong signal → cross with market order
 	if signal.Value > s.CrossThreshold || signal.Value < -s.CrossThreshold {
 		var side domain.Side
 		if signal.Value > 0 {
@@ -145,8 +145,8 @@ func (s *Strategy) Decide(agent *Agent, signal *domain.Signal, bbo *domain.BBO, 
 		return orders
 	}
 
-	// 3. Otherwise, post limit orders at best bid/ask.
-	// Only if we don't already have orders on this side.
+	// 3. Otherwise, post limit orders at best bid/ask
+	// Only if we don't already have orders on this side
 	hasBid, hasAsk := false, false
 	for _, id := range activeIDs {
 		o := agent.ActiveOrders[id]

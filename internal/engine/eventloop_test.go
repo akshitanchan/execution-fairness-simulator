@@ -16,7 +16,7 @@ func TestEventLoopOrdering(t *testing.T) {
 
 	el := NewEventLoop(handler)
 
-	// Schedule events out of order.
+	// Schedule events out of order
 	el.Schedule(&domain.Event{Timestamp: 300, Type: domain.EventSignal})
 	el.Schedule(&domain.Event{Timestamp: 100, Type: domain.EventSignal})
 	el.Schedule(&domain.Event{Timestamp: 200, Type: domain.EventSignal})
@@ -27,8 +27,8 @@ func TestEventLoopOrdering(t *testing.T) {
 		t.Fatalf("expected 3 events, got %d", len(processed))
 	}
 
-	// SeqNos are assigned 1,2,3. Timestamps are 300,100,200.
-	// Order should be: ts=100(seq=2), ts=200(seq=3), ts=300(seq=1).
+	// SeqNos are assigned 1,2,3. Timestamps are 300,100,200
+	// Order should be: ts=100(seq=2), ts=200(seq=3), ts=300(seq=1)
 	expectedSeqs := []uint64{2, 3, 1}
 	for i, seq := range expectedSeqs {
 		if processed[i] != seq {
@@ -41,7 +41,7 @@ func TestEventLoopSameTimestampFIFO(t *testing.T) {
 	var processed []uint64
 
 	handler := func(event *domain.Event) []*domain.Event {
-		// Use the order's ID to track which event was processed.
+		// Use the order's ID to track which event was processed
 		if event.Order != nil {
 			processed = append(processed, event.Order.ID)
 		}
@@ -50,7 +50,7 @@ func TestEventLoopSameTimestampFIFO(t *testing.T) {
 
 	el := NewEventLoop(handler)
 
-	// Three events at the same timestamp — should be processed in SeqNo order.
+	// Three events at the same timestamp — should be processed in SeqNo order
 	el.Schedule(&domain.Event{Timestamp: 100, Type: domain.EventOrderAccepted,
 		Order: &domain.Order{ID: 10}})
 	el.Schedule(&domain.Event{Timestamp: 100, Type: domain.EventOrderAccepted,
@@ -73,7 +73,7 @@ func TestEventLoopHandlerEnqueuesNewEvents(t *testing.T) {
 
 	handler := func(event *domain.Event) []*domain.Event {
 		count++
-		// First event spawns two more.
+		// First event spawns two more
 		if event.Timestamp == 0 {
 			return []*domain.Event{
 				{Timestamp: 10, Type: domain.EventSignal},

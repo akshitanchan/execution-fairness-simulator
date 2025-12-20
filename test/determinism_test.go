@@ -14,13 +14,13 @@ import (
 )
 
 // TestDeterminism verifies that the same seed + config produces
-// identical event logs, metrics, and reports across two runs.
+// identical event logs, metrics, and reports across two runs
 func TestDeterminism(t *testing.T) {
 	for _, name := range []string{"calm", "thin", "spike"} {
 		t.Run(name, func(t *testing.T) {
 			seed := int64(12345)
 
-			// First run.
+			// First run
 			cfg1 := scenario.GetConfig(name, seed)
 			dir1 := t.TempDir()
 			runner1, err := sim.NewRunner(cfg1, dir1)
@@ -32,7 +32,7 @@ func TestDeterminism(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			// Generate report for run 1.
+			// Generate report for run 1
 			m1, err := metrics.ComputeFromLog(result1.LogPath)
 			if err != nil {
 				t.Fatal(err)
@@ -42,7 +42,7 @@ func TestDeterminism(t *testing.T) {
 				t.Fatalf("report gen run1: %v", err)
 			}
 
-			// Second run with identical config.
+			// Second run with identical config
 			cfg2 := scenario.GetConfig(name, seed)
 			dir2 := t.TempDir()
 			runner2, err := sim.NewRunner(cfg2, dir2)
@@ -54,7 +54,7 @@ func TestDeterminism(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			// Generate report for run 2.
+			// Generate report for run 2
 			m2, err := metrics.ComputeFromLog(result2.LogPath)
 			if err != nil {
 				t.Fatal(err)
@@ -64,26 +64,26 @@ func TestDeterminism(t *testing.T) {
 				t.Fatalf("report gen run2: %v", err)
 			}
 
-			// Event counts must match.
+			// Event counts must match
 			if result1.EventCount != result2.EventCount {
 				t.Errorf("event count mismatch: %d vs %d",
 					result1.EventCount, result2.EventCount)
 			}
 
-			// Trade counts must match.
+			// Trade counts must match
 			if result1.TradeCount != result2.TradeCount {
 				t.Errorf("trade count mismatch: %d vs %d",
 					result1.TradeCount, result2.TradeCount)
 			}
 
-			// Log hashes must match.
+			// Log hashes must match
 			hash1 := hashFileT(t, result1.LogPath)
 			hash2 := hashFileT(t, result2.LogPath)
 			if hash1 != hash2 {
 				t.Errorf("log hash mismatch:\n  run1: %s\n  run2: %s", hash1, hash2)
 			}
 
-			// Report files must be identical.
+			// Report files must be identical
 			reportHash1 := hashFileT(t, filepath.Join(result1.OutputDir, "report.md"))
 			reportHash2 := hashFileT(t, filepath.Join(result2.OutputDir, "report.md"))
 			if reportHash1 != reportHash2 {
@@ -96,7 +96,7 @@ func TestDeterminism(t *testing.T) {
 				t.Errorf("metrics.json hash mismatch:\n  run1: %s\n  run2: %s", metricsHash1, metricsHash2)
 			}
 
-			// Metrics must be identical.
+			// Metrics must be identical
 			for _, traderID := range []string{"fast", "slow"} {
 				tm1, ok1 := m1[traderID]
 				tm2, ok2 := m2[traderID]

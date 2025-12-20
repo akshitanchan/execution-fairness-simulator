@@ -37,7 +37,7 @@ func TestGeneratorsProduceNonEmptyFlow(t *testing.T) {
 			t.Errorf("%s: expected >100 events, got %d", name, len(events))
 		}
 
-		// Check we have both buy and sell orders.
+		// Check we have both buy and sell orders
 		var buys, sells int
 		for _, e := range events {
 			if e.Order != nil && e.Order.Type != domain.CancelOrder {
@@ -55,7 +55,7 @@ func TestGeneratorsProduceNonEmptyFlow(t *testing.T) {
 			t.Errorf("%s: no sell orders generated", name)
 		}
 
-		// Check signals exist.
+		// Check signals exist
 		var signals int
 		for _, e := range events {
 			if e.Type == domain.EventSignal {
@@ -88,7 +88,7 @@ func TestSpikeGeneratorHasBurstPeriods(t *testing.T) {
 	gen := NewSpikeGenerator(cfg)
 	events := gen.Generate()
 
-	// Count events in burst windows vs outside.
+	// Count events in burst windows vs outside
 	p := cfg.Scenario
 	inBurst := func(ts int64) bool {
 		for t := p.BurstIntervalNs; t < cfg.Duration; t += p.BurstIntervalNs {
@@ -111,7 +111,7 @@ func TestSpikeGeneratorHasBurstPeriods(t *testing.T) {
 		}
 	}
 
-	// Ensure both burst and non-burst windows contain events.
+	// Ensure both burst and non-burst windows contain events
 	if burstCount == 0 {
 		t.Error("no events in burst windows")
 	}

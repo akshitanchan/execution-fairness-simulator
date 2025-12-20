@@ -37,17 +37,17 @@ func makeCancel(id uint64, cancelID uint64) *domain.Order {
 }
 
 // TestFIFOWithinPriceLevel verifies that orders at the same price are
-// filled in arrival (insertion) order.
+// filled in arrival (insertion) order
 func TestFIFOWithinPriceLevel(t *testing.T) {
 	book := New()
 
-	// Place 3 sell orders at the same price.
+	// Place 3 sell orders at the same price
 	book.ProcessOrder(makeLimit(1, domain.Sell, 1000, 10), 0)
 	book.ProcessOrder(makeLimit(2, domain.Sell, 1000, 10), 0)
 	book.ProcessOrder(makeLimit(3, domain.Sell, 1000, 10), 0)
 	book.AssertInvariants()
 
-	// A buy market order for 15 should fill orders 1 (10) and 2 (5 partial).
+	// A buy market order for 15 should fill orders 1 (10) and 2 (5 partial)
 	trades, _ := book.ProcessOrder(makeMarket(100, domain.Buy, 15), 1)
 	book.AssertInvariants()
 
@@ -55,19 +55,19 @@ func TestFIFOWithinPriceLevel(t *testing.T) {
 		t.Fatalf("expected 2 trades, got %d", len(trades))
 	}
 
-	// First fill: order 1, full 10.
+	// First fill: order 1, full 10
 	if trades[0].SellOrderID != 1 || trades[0].Qty != 10 {
 		t.Errorf("trade 0: expected sell order 1 qty 10, got sell %d qty %d",
 			trades[0].SellOrderID, trades[0].Qty)
 	}
 
-	// Second fill: order 2, partial 5.
+	// Second fill: order 2, partial 5
 	if trades[1].SellOrderID != 2 || trades[1].Qty != 5 {
 		t.Errorf("trade 1: expected sell order 2 qty 5, got sell %d qty %d",
 			trades[1].SellOrderID, trades[1].Qty)
 	}
 
-	// Order 2 should have 5 remaining, order 3 untouched.
+	// Order 2 should have 5 remaining, order 3 untouched
 	pos2 := book.QueuePosition(2)
 	pos3 := book.QueuePosition(3)
 	if pos2 != 1 {
@@ -79,17 +79,17 @@ func TestFIFOWithinPriceLevel(t *testing.T) {
 }
 
 // TestMarketOrderSweepsMultipleLevels verifies that a large market order
-// sweeps across multiple price levels.
+// sweeps across multiple price levels
 func TestMarketOrderSweepsMultipleLevels(t *testing.T) {
 	book := New()
 
-	// Build an ask side with 3 levels.
+	// Build an ask side with 3 levels
 	book.ProcessOrder(makeLimit(1, domain.Sell, 100, 5), 0)
 	book.ProcessOrder(makeLimit(2, domain.Sell, 101, 5), 0)
 	book.ProcessOrder(makeLimit(3, domain.Sell, 102, 5), 0)
 	book.AssertInvariants()
 
-	// Buy market order for 12: should sweep 100(5) + 101(5) + 102(2).
+	// Buy market order for 12: should sweep 100(5) + 101(5) + 102(2)
 	trades, bbo := book.ProcessOrder(makeMarket(100, domain.Buy, 12), 1)
 	book.AssertInvariants()
 
@@ -106,22 +106,22 @@ func TestMarketOrderSweepsMultipleLevels(t *testing.T) {
 		t.Errorf("trade 2: expected price 102 qty 2, got %d/%d", trades[2].Price, trades[2].Qty)
 	}
 
-	// Remaining: 3 at price 102.
+	// Remaining: 3 at price 102
 	if bbo.AskPrice != 102 || bbo.AskQty != 3 {
 		t.Errorf("expected ask 102/3, got %d/%d", bbo.AskPrice, bbo.AskQty)
 	}
 }
 
 // TestCancelRemovesRemainingOnly verifies that cancel removes the resting
-// order without affecting previously filled quantity.
+// order without affecting previously filled quantity
 func TestCancelRemovesRemainingOnly(t *testing.T) {
 	book := New()
 
-	// Place sell order of 10.
+	// Place sell order of 10
 	book.ProcessOrder(makeLimit(1, domain.Sell, 100, 10), 0)
 	book.AssertInvariants()
 
-	// Partially fill it with a buy of 3.
+	// Partially fill it with a buy of 3
 	trades, _ := book.ProcessOrder(makeMarket(2, domain.Buy, 3), 1)
 	book.AssertInvariants()
 
@@ -129,11 +129,11 @@ func TestCancelRemovesRemainingOnly(t *testing.T) {
 		t.Fatalf("expected 1 trade of qty 3, got %d trades", len(trades))
 	}
 
-	// Cancel the remaining.
+	// Cancel the remaining
 	book.ProcessOrder(makeCancel(3, 1), 2)
 	book.AssertInvariants()
 
-	// Book should be empty.
+	// Book should be empty
 	bidLevels, askLevels := book.Depth()
 	if bidLevels != 0 || askLevels != 0 {
 		t.Errorf("expected empty book, got %d bid levels, %d ask levels", bidLevels, askLevels)
@@ -141,13 +141,13 @@ func TestCancelRemovesRemainingOnly(t *testing.T) {
 }
 
 // TestCancelUnknownOrderIsNoop verifies that canceling a non-existent order
-// doesn't panic or corrupt the book.
+// doesn't panic or corrupt the book
 func TestCancelUnknownOrderIsNoop(t *testing.T) {
 	book := New()
 	book.ProcessOrder(makeLimit(1, domain.Sell, 100, 10), 0)
 	book.AssertInvariants()
 
-	// Cancel non-existent order.
+	// Cancel non-existent order
 	book.ProcessOrder(makeCancel(2, 999), 1)
 	book.AssertInvariants()
 
@@ -158,15 +158,15 @@ func TestCancelUnknownOrderIsNoop(t *testing.T) {
 }
 
 // TestCrossedLimitOrderMatchesImmediately verifies that a crossing limit
-// order is matched immediately (no crossed book).
+// order is matched immediately (no crossed book)
 func TestCrossedLimitOrderMatchesImmediately(t *testing.T) {
 	book := New()
 
-	// Resting ask at 100.
+	// Resting ask at 100
 	book.ProcessOrder(makeLimit(1, domain.Sell, 100, 10), 0)
 	book.AssertInvariants()
 
-	// Crossing bid at 101 (higher than best ask).
+	// Crossing bid at 101 (higher than best ask)
 	trades, _ := book.ProcessOrder(makeLimit(2, domain.Buy, 101, 5), 1)
 	book.AssertInvariants()
 
@@ -181,7 +181,7 @@ func TestCrossedLimitOrderMatchesImmediately(t *testing.T) {
 	}
 }
 
-// TestBBOUpdates verifies BBO is correct after various operations.
+// TestBBOUpdates verifies BBO is correct after various operations
 func TestBBOUpdates(t *testing.T) {
 	book := New()
 
@@ -205,7 +205,7 @@ func TestBBOUpdates(t *testing.T) {
 		t.Errorf("expected mid 100, got %d", bbo.MidPrice)
 	}
 
-	// Add a better bid.
+	// Add a better bid
 	book.ProcessOrder(makeLimit(3, domain.Buy, 100, 5), 0)
 	book.AssertInvariants()
 	bbo = book.BBO()
@@ -215,7 +215,7 @@ func TestBBOUpdates(t *testing.T) {
 }
 
 // TestPartialFillKeepsOrderOnBook verifies that partially filled limit orders
-// remain on the book with reduced quantity.
+// remain on the book with reduced quantity
 func TestPartialFillKeepsOrderOnBook(t *testing.T) {
 	book := New()
 
@@ -230,7 +230,7 @@ func TestPartialFillKeepsOrderOnBook(t *testing.T) {
 }
 
 // TestEmptyBookMarketOrderNoTrades verifies a market order on an empty
-// opposite side produces no trades.
+// opposite side produces no trades
 func TestEmptyBookMarketOrderNoTrades(t *testing.T) {
 	book := New()
 
@@ -242,7 +242,7 @@ func TestEmptyBookMarketOrderNoTrades(t *testing.T) {
 	}
 }
 
-// TestMultipleBidLevels verifies correct bid-side sorting and matching.
+// TestMultipleBidLevels verifies correct bid-side sorting and matching
 func TestMultipleBidLevels(t *testing.T) {
 	book := New()
 
@@ -256,7 +256,7 @@ func TestMultipleBidLevels(t *testing.T) {
 		t.Errorf("expected best bid 100, got %d", bbo.BidPrice)
 	}
 
-	// Sell market sweeps best bid first.
+	// Sell market sweeps best bid first
 	trades, _ := book.ProcessOrder(makeMarket(10, domain.Sell, 7), 1)
 	book.AssertInvariants()
 
@@ -271,7 +271,7 @@ func TestMultipleBidLevels(t *testing.T) {
 	}
 }
 
-// TestQueuePosition verifies queue position tracking.
+// TestQueuePosition verifies queue position tracking
 func TestQueuePosition(t *testing.T) {
 	book := New()
 
@@ -290,7 +290,7 @@ func TestQueuePosition(t *testing.T) {
 		t.Errorf("order 3 position: expected 3, got %d", pos)
 	}
 
-	// Non-existent order.
+	// Non-existent order
 	if pos := book.QueuePosition(999); pos != 0 {
 		t.Errorf("non-existent order: expected 0, got %d", pos)
 	}
