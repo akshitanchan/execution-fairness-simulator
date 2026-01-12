@@ -1,5 +1,4 @@
-// Package metrics collects per-trader execution quality metrics
-// from the event log and trade records
+// Package metrics computes per-trader execution quality metrics from the event log
 package metrics
 
 import (
@@ -49,7 +48,6 @@ type TraderMetrics struct {
 	SlippageValues []float64 `json:"slippage_values,omitempty"`
 }
 
-// Collector accumulates metrics from events
 type Collector struct {
 	traderMetrics map[string]*traderAccum
 	bboHistory    []bboSnapshot
@@ -104,7 +102,6 @@ type tradeRecord struct {
 	price     int64
 }
 
-// NewCollector creates a new metrics collector
 func NewCollector() *Collector {
 	return &Collector{
 		traderMetrics: make(map[string]*traderAccum),
@@ -124,7 +121,6 @@ func (c *Collector) getAccum(traderID string) *traderAccum {
 	return a
 }
 
-// ProcessEvent ingests a single event
 func (c *Collector) ProcessEvent(event *domain.Event) {
 	switch event.Type {
 	case domain.EventOrderAccepted:
@@ -261,7 +257,6 @@ func (c *Collector) priceAfterDuration(fillTime int64, durationNs int64) int64 {
 	return c.midAtTime(targetTime)
 }
 
-// Compute calculates final metrics for all tracked traders
 func (c *Collector) Compute() map[string]*TraderMetrics {
 	result := make(map[string]*TraderMetrics)
 
@@ -396,7 +391,6 @@ func (c *Collector) Compute() map[string]*TraderMetrics {
 	return result
 }
 
-// ComputeFromLog reads an event log and computes metrics
 func ComputeFromLog(logPath string) (map[string]*TraderMetrics, error) {
 	reader, err := eventlog.NewReader(logPath)
 	if err != nil {
@@ -419,7 +413,6 @@ func ComputeFromLog(logPath string) (map[string]*TraderMetrics, error) {
 	return c.Compute(), nil
 }
 
-// ComputeFromEvents computes metrics directly from an in-memory event stream
 func ComputeFromEvents(events []*domain.Event) map[string]*TraderMetrics {
 	c := NewCollector()
 	for _, event := range events {

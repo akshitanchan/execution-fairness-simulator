@@ -12,25 +12,21 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/scenario"
 )
 
-// ScenarioResult bundles a config with its computed metrics
 type ScenarioResult struct {
 	Config  *scenario.Config
 	Metrics map[string]*metrics.TraderMetrics
 	RunDir  string
 }
 
-// CrossReport generates a consolidated report comparing metrics across scenarios
 type CrossReport struct {
 	results []ScenarioResult
 	outDir  string
 }
 
-// NewCrossReport creates a cross-scenario report
 func NewCrossReport(results []ScenarioResult, outDir string) *CrossReport {
 	return &CrossReport{results: results, outDir: outDir}
 }
 
-// Generate writes the consolidated report
 func (cr *CrossReport) Generate() error {
 	if err := os.MkdirAll(cr.outDir, 0755); err != nil {
 		return fmt.Errorf("create output dir: %w", err)
@@ -217,7 +213,6 @@ func (cr *CrossReport) generateCrossAnalysis() string {
 	return sb.String()
 }
 
-// PrintCrossSummary prints a condensed cross-scenario summary to stdout
 func PrintCrossSummary(results []ScenarioResult) {
 	fmt.Println("\n=== Cross-Scenario Comparison ===")
 	fmt.Println()

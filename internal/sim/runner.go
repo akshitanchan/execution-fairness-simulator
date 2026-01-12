@@ -1,5 +1,4 @@
-// Package sim wires together the order book, event loop, traders,
-// scenario generator, and event log into a complete simulation run
+// Package sim wires the order book, event loop, traders, and scenario generator into a run
 package sim
 
 import (
@@ -19,7 +18,6 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/trader"
 )
 
-// RunResult holds the output of a simulation run
 type RunResult struct {
 	RunID      string           `json:"run_id"`
 	Config     *scenario.Config `json:"config"`
@@ -31,7 +29,6 @@ type RunResult struct {
 	OutputDir  string           `json:"output_dir"`
 }
 
-// Runner executes a simulation
 type Runner struct {
 	cfg       *scenario.Config
 	book      *orderbook.Book
@@ -51,7 +48,6 @@ type Runner struct {
 	outputDir string
 }
 
-// NewRunner creates a simulation runner
 func NewRunner(cfg *scenario.Config, baseOutputDir string) (*Runner, error) {
 	runID := fmt.Sprintf("%s_seed%d", cfg.Name, cfg.Seed)
 	outputDir := filepath.Join(baseOutputDir, runID)
@@ -93,7 +89,6 @@ func NewRunner(cfg *scenario.Config, baseOutputDir string) (*Runner, error) {
 	return r, nil
 }
 
-// Run executes the simulation and returns results
 func (r *Runner) Run() (*RunResult, error) {
 	startWall := time.Now()
 
@@ -165,7 +160,6 @@ func (r *Runner) Run() (*RunResult, error) {
 	}, nil
 }
 
-// handleEvent is the central event dispatcher
 func (r *Runner) handleEvent(event *domain.Event) []*domain.Event {
 	var newEvents []*domain.Event
 
@@ -189,7 +183,6 @@ func (r *Runner) handleEvent(event *domain.Event) []*domain.Event {
 	return newEvents
 }
 
-// handleOrder processes an incoming order through the matching engine
 func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 	order := event.Order
 	if order == nil {
@@ -274,7 +267,6 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 	return newEvents
 }
 
-// handleSignal dispatches a signal to both traders and schedules their responses
 func (r *Runner) handleSignal(event *domain.Event) []*domain.Event {
 	signal := event.Signal
 	if signal == nil {
@@ -315,7 +307,6 @@ func (r *Runner) handleSignal(event *domain.Event) []*domain.Event {
 	return newEvents
 }
 
-// handleReQuote processes a periodic re-quote event for a specific trader
 func (r *Runner) handleReQuote(event *domain.Event) []*domain.Event {
 	if r.currentBBO.BidPrice == 0 || r.currentBBO.AskPrice == 0 {
 		return nil

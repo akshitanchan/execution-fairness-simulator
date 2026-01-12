@@ -14,7 +14,6 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/scenario"
 )
 
-// Report generates and writes the fairness report
 type Report struct {
 	config *scenario.Config
 	fast   *metrics.TraderMetrics
@@ -22,7 +21,6 @@ type Report struct {
 	outDir string
 }
 
-// NewReport creates a report generator
 func NewReport(cfg *scenario.Config, metricsMap map[string]*metrics.TraderMetrics, outDir string) *Report {
 	return &Report{
 		config: cfg,
@@ -32,7 +30,6 @@ func NewReport(cfg *scenario.Config, metricsMap map[string]*metrics.TraderMetric
 	}
 }
 
-// Generate produces the full report
 func (r *Report) Generate() error {
 	// Save metrics as JSON
 	metricsPath := filepath.Join(r.outDir, "metrics.json")
@@ -372,7 +369,6 @@ func percentile(sorted []float64, p float64) float64 {
 	return sorted[lower]*(1-frac) + sorted[upper]*frac
 }
 
-// PrintSummary writes a brief summary to stdout
 func PrintSummary(cfg *scenario.Config, m map[string]*metrics.TraderMetrics) {
 	fast := m[cfg.FastTrader.ID]
 	slow := m[cfg.SlowTrader.ID]

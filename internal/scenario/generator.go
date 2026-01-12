@@ -7,7 +7,6 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/domain"
 )
 
-// backgroundGen is the common background order flow generator
 type backgroundGen struct {
 	cfg    *Config
 	rng    *rand.Rand
@@ -42,7 +41,6 @@ func (g *backgroundGen) randSide() domain.Side {
 	return domain.Sell
 }
 
-// generateInitialBook creates initial resting limit orders to seed the book
 func (g *backgroundGen) generateInitialBook() []*domain.Event {
 	p := g.cfg.Scenario
 	var events []*domain.Event
@@ -96,7 +94,6 @@ func (g *backgroundGen) generateInitialBook() []*domain.Event {
 	return events
 }
 
-// generateSignals creates periodic signal events
 func (g *backgroundGen) generateSignals() []*domain.Event {
 	var events []*domain.Event
 	interval := g.cfg.Scenario.SignalIntervalNs
@@ -118,7 +115,6 @@ func (g *backgroundGen) generateSignals() []*domain.Event {
 	return events
 }
 
-// CalmGenerator produces steady-state background order flow
 type CalmGenerator struct {
 	*backgroundGen
 }
@@ -215,7 +211,6 @@ func (g *CalmGenerator) Generate() []*domain.Event {
 	return events
 }
 
-// ThinGenerator produces low-depth order flow with sporadic sweeps
 type ThinGenerator struct {
 	*backgroundGen
 }
@@ -306,7 +301,6 @@ func (g *ThinGenerator) Generate() []*domain.Event {
 	return events
 }
 
-// SpikeGenerator produces order flow with periodic burst windows
 type SpikeGenerator struct {
 	*backgroundGen
 }
@@ -442,7 +436,6 @@ func (g *SpikeGenerator) Generate() []*domain.Event {
 	return events
 }
 
-// NewGenerator creates the appropriate generator for a config
 func NewGenerator(cfg *Config) Generator {
 	switch cfg.Name {
 	case "calm":

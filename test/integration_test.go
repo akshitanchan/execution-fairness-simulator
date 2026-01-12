@@ -9,8 +9,6 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/sim"
 )
 
-// TestIntegrationAllScenarios runs all scenarios end-to-end and checks
-// that the simulation produces meaningful results
 func TestIntegrationAllScenarios(t *testing.T) {
 	for _, name := range []string{"calm", "thin", "spike"} {
 		t.Run(name, func(t *testing.T) {
@@ -79,8 +77,6 @@ func TestIntegrationAllScenarios(t *testing.T) {
 	}
 }
 
-// TestLatencyImpactEvidence verifies the spec requirement that latency
-// changes produce measurable outcome differences
 func TestLatencyImpactEvidence(t *testing.T) {
 	measurableDiffs := 0
 

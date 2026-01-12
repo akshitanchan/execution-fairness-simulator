@@ -36,8 +36,6 @@ func makeCancel(id uint64, cancelID uint64) *domain.Order {
 	}
 }
 
-// TestFIFOWithinPriceLevel verifies that orders at the same price are
-// filled in arrival (insertion) order
 func TestFIFOWithinPriceLevel(t *testing.T) {
 	book := New()
 
@@ -78,8 +76,6 @@ func TestFIFOWithinPriceLevel(t *testing.T) {
 	}
 }
 
-// TestMarketOrderSweepsMultipleLevels verifies that a large market order
-// sweeps across multiple price levels
 func TestMarketOrderSweepsMultipleLevels(t *testing.T) {
 	book := New()
 
@@ -112,8 +108,6 @@ func TestMarketOrderSweepsMultipleLevels(t *testing.T) {
 	}
 }
 
-// TestCancelRemovesRemainingOnly verifies that cancel removes the resting
-// order without affecting previously filled quantity
 func TestCancelRemovesRemainingOnly(t *testing.T) {
 	book := New()
 
@@ -140,8 +134,6 @@ func TestCancelRemovesRemainingOnly(t *testing.T) {
 	}
 }
 
-// TestCancelUnknownOrderIsNoop verifies that canceling a non-existent order
-// doesn't panic or corrupt the book
 func TestCancelUnknownOrderIsNoop(t *testing.T) {
 	book := New()
 	book.ProcessOrder(makeLimit(1, domain.Sell, 100, 10), 0)
@@ -157,8 +149,6 @@ func TestCancelUnknownOrderIsNoop(t *testing.T) {
 	}
 }
 
-// TestCrossedLimitOrderMatchesImmediately verifies that a crossing limit
-// order is matched immediately (no crossed book)
 func TestCrossedLimitOrderMatchesImmediately(t *testing.T) {
 	book := New()
 
@@ -181,7 +171,6 @@ func TestCrossedLimitOrderMatchesImmediately(t *testing.T) {
 	}
 }
 
-// TestBBOUpdates verifies BBO is correct after various operations
 func TestBBOUpdates(t *testing.T) {
 	book := New()
 
@@ -214,8 +203,6 @@ func TestBBOUpdates(t *testing.T) {
 	}
 }
 
-// TestPartialFillKeepsOrderOnBook verifies that partially filled limit orders
-// remain on the book with reduced quantity
 func TestPartialFillKeepsOrderOnBook(t *testing.T) {
 	book := New()
 
@@ -229,8 +216,6 @@ func TestPartialFillKeepsOrderOnBook(t *testing.T) {
 	}
 }
 
-// TestEmptyBookMarketOrderNoTrades verifies a market order on an empty
-// opposite side produces no trades
 func TestEmptyBookMarketOrderNoTrades(t *testing.T) {
 	book := New()
 
@@ -242,7 +227,6 @@ func TestEmptyBookMarketOrderNoTrades(t *testing.T) {
 	}
 }
 
-// TestMultipleBidLevels verifies correct bid-side sorting and matching
 func TestMultipleBidLevels(t *testing.T) {
 	book := New()
 
@@ -271,7 +255,6 @@ func TestMultipleBidLevels(t *testing.T) {
 	}
 }
 
-// TestQueuePosition verifies queue position tracking
 func TestQueuePosition(t *testing.T) {
 	book := New()
 

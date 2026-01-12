@@ -13,8 +13,6 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/sim"
 )
 
-// TestDeterminism verifies that the same seed + config produces
-// identical event logs, metrics, and reports across two runs
 func TestDeterminism(t *testing.T) {
 	for _, name := range []string{"calm", "thin", "spike"} {
 		t.Run(name, func(t *testing.T) {
