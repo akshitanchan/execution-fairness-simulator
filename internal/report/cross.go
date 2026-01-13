@@ -153,11 +153,9 @@ func (cr *CrossReport) generateCrossAnalysis() string {
 	sb.WriteString("### Where Latency Matters Most\n\n")
 
 	type scenarioDelta struct {
-		name       string
-		fillDelta  float64
-		slipDelta  float64
-		ttfDelta   float64
-		queueDelta float64
+		name      string
+		fillDelta float64
+		slipDelta float64
 	}
 
 	var deltas []scenarioDelta
@@ -168,11 +166,9 @@ func (cr *CrossReport) generateCrossAnalysis() string {
 			continue
 		}
 		deltas = append(deltas, scenarioDelta{
-			name:       r.Config.Name,
-			fillDelta:  (fast.FillRate - slow.FillRate) * 100,
-			slipDelta:  fast.SlippageBps - slow.SlippageBps,
-			ttfDelta:   fast.AvgTimeToFillNs - slow.AvgTimeToFillNs,
-			queueDelta: fast.AvgQueuePosPlace - slow.AvgQueuePosPlace,
+			name:      r.Config.Name,
+			fillDelta: (fast.FillRate - slow.FillRate) * 100,
+			slipDelta: fast.SlippageBps - slow.SlippageBps,
 		})
 	}
 
@@ -181,34 +177,19 @@ func (cr *CrossReport) generateCrossAnalysis() string {
 		return sb.String()
 	}
 
-	// Find scenario with largest fill rate gap
-	maxFillScenario := deltas[0]
+	maxFill := deltas[0]
+	maxSlip := deltas[0]
 	for _, d := range deltas[1:] {
-		if abs(d.fillDelta) > abs(maxFillScenario.fillDelta) {
-			maxFillScenario = d
+		if abs(d.fillDelta) > abs(maxFill.fillDelta) {
+			maxFill = d
+		}
+		if abs(d.slipDelta) > abs(maxSlip.slipDelta) {
+			maxSlip = d
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("- **Fill Rate**: The largest gap appears in **%s** (%+.1f pp), ",
-		maxFillScenario.name, maxFillScenario.fillDelta))
-	sb.WriteString("indicating this market regime amplifies the latency advantage most for execution likelihood.\n")
-
-	// Find scenario with largest slippage gap
-	maxSlipScenario := deltas[0]
-	for _, d := range deltas[1:] {
-		if abs(d.slipDelta) > abs(maxSlipScenario.slipDelta) {
-			maxSlipScenario = d
-		}
-	}
-
-	sb.WriteString(fmt.Sprintf("- **Slippage**: The **%s** scenario shows the widest slippage gap (%+.2f bps), ",
-		maxSlipScenario.name, maxSlipScenario.slipDelta))
-	sb.WriteString("suggesting execution price quality diverges most under these conditions.\n")
-
-	sb.WriteString("\n### Key Takeaways\n\n")
-	sb.WriteString("1. Latency advantages compound: faster arrival → better queue position → higher fill rate → less slippage.\n")
-	sb.WriteString("2. Thin or volatile markets amplify the gap because liquidity is scarce and replenished slowly.\n")
-	sb.WriteString("3. In calm, deep markets the advantage exists but is smaller in magnitude — depth buffers the impact.\n")
+	sb.WriteString(fmt.Sprintf("- **Fill Rate**: largest gap in **%s** (%+.1f pp)\n", maxFill.name, maxFill.fillDelta))
+	sb.WriteString(fmt.Sprintf("- **Slippage**: largest gap in **%s** (%+.2f bps)\n", maxSlip.name, maxSlip.slipDelta))
 
 	return sb.String()
 }

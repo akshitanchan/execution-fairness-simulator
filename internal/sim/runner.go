@@ -204,12 +204,9 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 	r.logEvent(event)
 
 	// Track trader active orders for limit orders that rest
-	// Must be done BEFORE processing fills so the agent can look up the order
 	if order.Type == domain.LimitOrder {
-		if order.TraderID == r.fastAgent.ID {
-			r.fastAgent.ActiveOrders[order.ID] = order
-		} else if order.TraderID == r.slowAgent.ID {
-			r.slowAgent.ActiveOrders[order.ID] = order
+		if a := r.agentFor(order.TraderID); a != nil {
+			a.ActiveOrders[order.ID] = order
 		}
 	}
 
@@ -221,11 +218,8 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 		}
 		r.logEvent(cancelEvent)
 
-		// Notify agents
-		if order.TraderID == r.fastAgent.ID {
-			r.fastAgent.OnCancelAck(order.CancelID)
-		} else if order.TraderID == r.slowAgent.ID {
-			r.slowAgent.OnCancelAck(order.CancelID)
+		if a := r.agentFor(order.TraderID); a != nil {
+			a.OnCancelAck(order.CancelID)
 		}
 	}
 
@@ -241,15 +235,11 @@ func (r *Runner) handleOrder(event *domain.Event) []*domain.Event {
 		r.logEvent(tradeEvent)
 
 		// Notify agents of fills
-		if trade.BuyTrader == r.fastAgent.ID {
-			r.fastAgent.OnFill(trade, trade.BuyOrderID)
-		} else if trade.BuyTrader == r.slowAgent.ID {
-			r.slowAgent.OnFill(trade, trade.BuyOrderID)
+		if a := r.agentFor(trade.BuyTrader); a != nil {
+			a.OnFill(trade, trade.BuyOrderID)
 		}
-		if trade.SellTrader == r.fastAgent.ID {
-			r.fastAgent.OnFill(trade, trade.SellOrderID)
-		} else if trade.SellTrader == r.slowAgent.ID {
-			r.slowAgent.OnFill(trade, trade.SellOrderID)
+		if a := r.agentFor(trade.SellTrader); a != nil {
+			a.OnFill(trade, trade.SellOrderID)
 		}
 	}
 
@@ -273,37 +263,14 @@ func (r *Runner) handleSignal(event *domain.Event) []*domain.Event {
 		return nil
 	}
 
-	// Set mid price on signal from current BBO
 	signal.MidPrice = r.currentBBO.MidPrice
-
 	r.logEvent(event)
 
 	var newEvents []*domain.Event
-
-	// Both traders see the same signal at the same time
-	// Their response is delayed by their latency
-	fastOrders := r.fastAgent.OnSignal(signal, r.currentBBO, event.Timestamp)
-	for _, order := range fastOrders {
-		arrivalTime := r.fastAgent.Latency.Apply(order.DecisionTime)
-		order.ArrivalTime = arrivalTime
-		newEvents = append(newEvents, &domain.Event{
-			Timestamp: arrivalTime,
-			Type:      domain.EventOrderAccepted,
-			Order:     order,
-		})
+	for _, agent := range []*trader.Agent{r.fastAgent, r.slowAgent} {
+		orders := agent.OnSignal(signal, r.currentBBO, event.Timestamp)
+		newEvents = append(newEvents, r.scheduleOrders(agent, orders)...)
 	}
-
-	slowOrders := r.slowAgent.OnSignal(signal, r.currentBBO, event.Timestamp)
-	for _, order := range slowOrders {
-		arrivalTime := r.slowAgent.Latency.Apply(order.DecisionTime)
-		order.ArrivalTime = arrivalTime
-		newEvents = append(newEvents, &domain.Event{
-			Timestamp: arrivalTime,
-			Type:      domain.EventOrderAccepted,
-			Order:     order,
-		})
-	}
-
 	return newEvents
 }
 
@@ -312,40 +279,48 @@ func (r *Runner) handleReQuote(event *domain.Event) []*domain.Event {
 		return nil
 	}
 
-	var agent *trader.Agent
-	if event.TraderID == r.fastAgent.ID {
-		agent = r.fastAgent
-	} else if event.TraderID == r.slowAgent.ID {
-		agent = r.slowAgent
-	} else {
+	agent := r.agentFor(event.TraderID)
+	if agent == nil {
 		return nil
 	}
 
-	// Create a neutral signal for re-quote (value=0 means no directional bias)
 	neutralSignal := &domain.Signal{
 		Value:    0,
 		MidPrice: r.currentBBO.MidPrice,
 	}
 
 	orders := agent.OnSignal(neutralSignal, r.currentBBO, event.Timestamp)
+	return r.scheduleOrders(agent, orders)
+}
 
-	var newEvents []*domain.Event
+func (r *Runner) scheduleOrders(agent *trader.Agent, orders []*domain.Order) []*domain.Event {
+	var events []*domain.Event
 	for _, order := range orders {
 		arrivalTime := agent.Latency.Apply(order.DecisionTime)
 		order.ArrivalTime = arrivalTime
-		newEvents = append(newEvents, &domain.Event{
+		events = append(events, &domain.Event{
 			Timestamp: arrivalTime,
 			Type:      domain.EventOrderAccepted,
 			Order:     order,
 		})
 	}
-
-	return newEvents
+	return events
 }
 
 func (r *Runner) logEvent(event *domain.Event) {
 	if err := r.logWriter.Write(event); err != nil {
 		panic(fmt.Sprintf("failed to write event: %v", err))
+	}
+}
+
+func (r *Runner) agentFor(traderID string) *trader.Agent {
+	switch traderID {
+	case r.fastAgent.ID:
+		return r.fastAgent
+	case r.slowAgent.ID:
+		return r.slowAgent
+	default:
+		return nil
 	}
 }
 

@@ -130,127 +130,46 @@ func (r *Report) generateExplanation() string {
 	var sb strings.Builder
 
 	if r.fast == nil || r.slow == nil {
-		sb.WriteString("Insufficient data to generate explanation.\n")
+		sb.WriteString("Insufficient data.\n")
 		return sb.String()
 	}
 
-	// 1. Arrival order differences
-	sb.WriteString("### Message Arrival Ordering\n\n")
 	latencyDiff := r.config.SlowTrader.BaseLatencyMs - r.config.FastTrader.BaseLatencyMs
-	sb.WriteString(fmt.Sprintf("The fast trader's messages arrive **%d ms** earlier than the slow trader's. ",
-		latencyDiff))
-	sb.WriteString("This means when both traders react to the same signal, the fast trader's order is ")
-	sb.WriteString("processed first—securing better queue position at the intended price level.\n\n")
+	fillDelta := (r.fast.FillRate - r.slow.FillRate) * 100
+	slipDelta := r.fast.SlippageBps - r.slow.SlippageBps
 
-	// Queue position data
+	sb.WriteString(fmt.Sprintf("Latency gap: %d ms (fast %d ms, slow %d ms + %d ms jitter)\n\n",
+		latencyDiff, r.config.FastTrader.BaseLatencyMs,
+		r.config.SlowTrader.BaseLatencyMs, r.config.SlowTrader.JitterMs))
+
 	if r.fast.AvgQueuePosPlace > 0 || r.slow.AvgQueuePosPlace > 0 {
-		sb.WriteString(fmt.Sprintf("**Queue position at placement**: fast = %.1f, slow = %.1f. ",
+		sb.WriteString(fmt.Sprintf("- Queue position at placement: fast %.1f, slow %.1f\n",
 			r.fast.AvgQueuePosPlace, r.slow.AvgQueuePosPlace))
-		if r.fast.AvgQueuePosPlace < r.slow.AvgQueuePosPlace {
-			sb.WriteString("The fast trader consistently joins the queue closer to the front, ")
-			sb.WriteString("giving it priority over the slow trader at the same price level.\n\n")
-		} else {
-			sb.WriteString("Queue positions are similar, suggesting depth absorbs the latency difference in this scenario.\n\n")
-		}
 	}
 	if r.fast.AvgQueuePosFill > 0 || r.slow.AvgQueuePosFill > 0 {
-		sb.WriteString(fmt.Sprintf("**Queue position at fill**: fast = %.1f, slow = %.1f. ",
+		sb.WriteString(fmt.Sprintf("- Queue position at fill: fast %.1f, slow %.1f\n",
 			r.fast.AvgQueuePosFill, r.slow.AvgQueuePosFill))
-		sb.WriteString("A lower fill queue position means the order was nearer the front when it executed.\n\n")
 	}
 
-	// 2. Fill rate analysis
-	sb.WriteString("### Fill Rate Impact\n\n")
-	fillDelta := (r.fast.FillRate - r.slow.FillRate) * 100
-	if math.Abs(fillDelta) > 1.0 {
-		if fillDelta > 0 {
-			sb.WriteString(fmt.Sprintf("The fast trader achieved a fill rate **%.1f pp higher** than the slow trader. ", fillDelta))
-			sb.WriteString("This gap arises because:\n")
-			sb.WriteString("- The fast trader joins the queue earlier, gaining priority over the slow trader at the same price level.\n")
-			sb.WriteString("- By the time the slow trader's order arrives, available liquidity may already be consumed.\n")
-			sb.WriteString("- Cancel-and-replace operations take effect sooner for the fast trader, reducing stale-order exposure.\n\n")
-		} else {
-			sb.WriteString(fmt.Sprintf("The fast trader's fill rate is **%.1f pp lower** than the slow trader in this run. ", math.Abs(fillDelta)))
-			sb.WriteString("Despite faster arrival on average, fill-rate inversions can occur when:\n")
-			sb.WriteString("- The slow trader gets fewer but more selectively timed fills.\n")
-			sb.WriteString("- Cancel/replace timing changes which resting orders remain eligible during liquidity bursts.\n")
-			sb.WriteString("- Queue position advantages show up more strongly in time-to-fill or size-filled metrics than in filled-order ratio.\n\n")
-		}
-	} else {
-		sb.WriteString(fmt.Sprintf("Fill rates are similar (delta: %.1f pp), suggesting the scenario's depth ", fillDelta))
-		sb.WriteString("was sufficient to absorb both traders' orders most of the time.\n\n")
-	}
+	sb.WriteString(fmt.Sprintf("- Fill rate: fast %.1f%%, slow %.1f%% (delta %+.1f pp)\n",
+		r.fast.FillRate*100, r.slow.FillRate*100, fillDelta))
 
-	// Missed fills analysis
-	sb.WriteString("### Missed Fills\n\n")
-	sb.WriteString(fmt.Sprintf("Orders canceled without any fill — fast: **%d**, slow: **%d**.\n",
+	sb.WriteString(fmt.Sprintf("- Missed fills (canceled before any fill): fast %d, slow %d\n",
 		r.fast.CanceledBeforeFill, r.slow.CanceledBeforeFill))
-	if r.slow.CanceledBeforeFill > r.fast.CanceledBeforeFill {
-		diff := r.slow.CanceledBeforeFill - r.fast.CanceledBeforeFill
-		sb.WriteString(fmt.Sprintf("The slow trader missed **%d more fills** due to orders going stale ",
-			diff))
-		sb.WriteString(fmt.Sprintf("before any contra-side liquidity arrived. The %d ms additional latency means cancels ",
-			latencyDiff))
-		sb.WriteString("take longer to process, leaving stale orders exposed. ")
-		sb.WriteString(fmt.Sprintf("Out of %d cancels sent by the slow trader, %d targeted orders that never received a fill.\n\n",
-			r.slow.CancelsSent, r.slow.CanceledBeforeFill))
-	} else {
-		sb.WriteString("Both traders show similar missed-fill counts in this scenario.\n\n")
-	}
 
-	// 3. Slippage analysis
-	sb.WriteString("### Slippage Analysis\n\n")
-	slipDelta := r.fast.SlippageBps - r.slow.SlippageBps
-	sb.WriteString(fmt.Sprintf("Fast trader slippage: **%.2f bps** | Slow trader slippage: **%.2f bps** (delta: %+.2f bps)\n\n",
+	sb.WriteString(fmt.Sprintf("- Slippage: fast %.2f bps, slow %.2f bps (delta %+.2f bps)\n",
 		r.fast.SlippageBps, r.slow.SlippageBps, slipDelta))
-	if math.Abs(slipDelta) > 0.5 {
-		sb.WriteString("The slippage difference reflects the impact of queue position on execution price. ")
-		sb.WriteString("Earlier arrival means the fast trader can:\n")
-		sb.WriteString("- Join the queue at the intended price before it shifts.\n")
-		sb.WriteString("- Execute market orders before adverse book movements.\n\n")
-	}
 
-	// 4. Adverse selection
-	sb.WriteString("### Adverse Selection\n\n")
-	sb.WriteString(fmt.Sprintf("Fast trader: **%.2f bps** | Slow trader: **%.2f bps**\n\n",
+	sb.WriteString(fmt.Sprintf("- Adverse selection: fast %.2f bps, slow %.2f bps\n",
 		r.fast.AdverseSelectionBps, r.slow.AdverseSelectionBps))
-	sb.WriteString("Adverse selection measures price movement against the trader's position after a fill. ")
-	if r.slow.AdverseSelectionBps < r.fast.AdverseSelectionBps {
-		sb.WriteString("The slow trader experiences less adverse selection, likely because it only gets filled ")
-		sb.WriteString("when the market doesn't move away—a form of selection bias that reduces fill rate but ")
-		sb.WriteString("improves per-fill quality.\n\n")
-	} else {
-		sb.WriteString("Both traders face similar adverse selection, indicating that post-fill price dynamics ")
-		sb.WriteString("are not strongly correlated with arrival timing in this scenario.\n\n")
-	}
 
-	// 5. Time-to-fill
-	sb.WriteString("### Time-to-Fill\n\n")
 	if r.fast.AvgTimeToFillNs > 0 && r.slow.AvgTimeToFillNs > 0 {
-		ttfRatio := r.slow.AvgTimeToFillNs / r.fast.AvgTimeToFillNs
-		sb.WriteString(fmt.Sprintf("The slow trader's average time-to-fill is **%.1fx** that of the fast trader. ",
-			ttfRatio))
-		sb.WriteString("This reflects both the latency gap itself and the cascading effect: ")
-		sb.WriteString("later arrival → worse queue position → longer wait for fills.\n\n")
+		sb.WriteString(fmt.Sprintf("- Avg time-to-fill: fast %.2f ms, slow %.2f ms (%.1fx)\n",
+			r.fast.AvgTimeToFillNs, r.slow.AvgTimeToFillNs,
+			r.slow.AvgTimeToFillNs/r.fast.AvgTimeToFillNs))
 	}
 
-	// 6. Scenario-specific notes
-	sb.WriteString("### Scenario Context: " + r.config.Name + "\n\n")
-	switch r.config.Name {
-	case "calm":
-		sb.WriteString("In a calm market with stable mid and tight spread, latency advantages manifest ")
-		sb.WriteString("primarily through queue position. The deep book means fills are available for both ")
-		sb.WriteString("traders, but the fast trader consistently executes first.\n")
-	case "thin":
-		sb.WriteString("A thin book magnifies the latency advantage. With limited depth at top levels, ")
-		sb.WriteString("the fast trader captures scarce liquidity. Sporadic market sweeps create ")
-		sb.WriteString("opportunities that are disproportionately captured by the faster trader.\n")
-	case "spike":
-		sb.WriteString("During burst windows, the rapid increase in market orders and cancellations ")
-		sb.WriteString("creates a volatile environment. The fast trader benefits from being able to ")
-		sb.WriteString("cancel and re-quote faster during these windows, while the slow trader's ")
-		sb.WriteString("stale orders are more exposed to adverse fills.\n")
-	}
+	sb.WriteString(fmt.Sprintf("\nScenario: %s\n", r.config.Name))
 
 	return sb.String()
 }

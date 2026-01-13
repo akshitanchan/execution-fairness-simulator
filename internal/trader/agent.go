@@ -136,7 +136,6 @@ func (s *Strategy) Decide(agent *Agent, signal *domain.Signal, bbo *domain.BBO, 
 	hasBid, hasAsk := false, false
 	for _, id := range activeIDs {
 		o := agent.ActiveOrders[id]
-		_ = o
 		if o.Side == domain.Buy {
 			hasBid = true
 		}

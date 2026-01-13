@@ -48,9 +48,9 @@ func (s Side) MarshalJSON() ([]byte, error) {
 func (s *Side) UnmarshalJSON(data []byte) error {
 	str := strings.Trim(string(data), `"`)
 	switch str {
-	case "BUY", "1":
+	case "BUY":
 		*s = Buy
-	case "SELL", "-1":
+	case "SELL":
 		*s = Sell
 	default:
 		return fmt.Errorf("unknown Side: %s", str)
@@ -86,11 +86,11 @@ func (t OrderType) MarshalJSON() ([]byte, error) {
 func (t *OrderType) UnmarshalJSON(data []byte) error {
 	str := strings.Trim(string(data), `"`)
 	switch str {
-	case "LIMIT", "0":
+	case "LIMIT":
 		*t = LimitOrder
-	case "MARKET", "1":
+	case "MARKET":
 		*t = MarketOrder
-	case "CANCEL", "2":
+	case "CANCEL":
 		*t = CancelOrder
 	default:
 		return fmt.Errorf("unknown OrderType: %s", str)
@@ -141,21 +141,21 @@ func (e EventType) MarshalJSON() ([]byte, error) {
 func (e *EventType) UnmarshalJSON(data []byte) error {
 	str := strings.Trim(string(data), `"`)
 	switch str {
-	case "ORDER_ACCEPTED", "0":
+	case "ORDER_ACCEPTED":
 		*e = EventOrderAccepted
-	case "ORDER_CANCELED", "1":
+	case "ORDER_CANCELED":
 		*e = EventOrderCanceled
-	case "TRADE_EXECUTED", "2":
+	case "TRADE_EXECUTED":
 		*e = EventTradeExecuted
-	case "BBO_UPDATE", "3":
+	case "BBO_UPDATE":
 		*e = EventBBOUpdate
-	case "SIGNAL", "4":
+	case "SIGNAL":
 		*e = EventSignal
-	case "REQUOTE", "5":
+	case "REQUOTE":
 		*e = EventReQuote
-	case "SIM_START", "6":
+	case "SIM_START":
 		*e = EventSimStart
-	case "SIM_END", "7":
+	case "SIM_END":
 		*e = EventSimEnd
 	default:
 		return fmt.Errorf("unknown EventType: %s", str)
