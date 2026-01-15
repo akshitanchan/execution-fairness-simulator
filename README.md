@@ -1,155 +1,61 @@
 # Execution Fairness Simulator
 
-A deterministic exchange simulation that quantifies how latency affects execution outcomes under price-time priority. Produces a "fairness report" comparing identical strategies run with different latency profiles, backed by queue position and event-log evidence.
+Deterministic exchange simulator that measures how latency affects execution quality under price-time priority. Compares two traders running identical strategies with different latency profiles and generates a fairness report.
 
 ## Requirements
 
-- Go 1.24+ (validated with Go 1.24.x)
+- Go 1.24+
 
 ## Quick Start
 
 ```bash
-# Build
 make build
 
-# Run all scenarios and generate report
+# Run all scenarios
 make demo
 
-# Or run individually
+# Or run one at a time
 ./fairsim run --scenario calm --seed 42
-./fairsim run --scenario thin --seed 42
 ./fairsim run --scenario spike --seed 42
 
-# View the report for the last run
+# View report
 ./fairsim report --last-run
 
-# Run tests
+# Tests
 make test
 ```
 
-## Matching Rules
-
-The order book implements **price-time priority**:
-
-| Rule | Description |
-|------|-------------|
-| **Price priority** | Better-priced orders execute first. Bids sorted descending, asks ascending. |
-| **Time priority** | At the same price, orders are filled in FIFO (insertion) order. |
-| **Partial fills** | Supported (partially filled orders remain on the book). |
-| **Market orders** | Sweep the opposite side until filled or book is empty. |
-| **Limit orders** | Match aggressively first, then rest if any quantity remains. |
-| **Cancels** | Remove remaining quantity; previously filled quantity is unaffected. |
-
-**Invariants** (asserted after every order):
-- `best_bid < best_ask` (crossed books resolved by matching)
-- Total volume at each level = sum of resting orders
-- No negative remaining quantities
-- No empty price levels on the book
-
-## Latency Model
-
-Each trader has:
-- `base_latency_ms` - Fixed propagation delay
-- `jitter_ms` - Uniform random jitter `[0, jitter_ms)` from a seeded RNG
-
-```
-arrival_time = decision_time + base_latency + uniform(0, jitter)
-```
-
-Both traders receive the same signal at the same time. Their response orders are delayed by their individual latency before reaching the exchange. Message ordering is fully deterministic given the seed.
-
-**Default Configuration:**
-
-| Trader | Base Latency | Jitter |
-|--------|-------------|--------|
-| fast   | 1 ms        | 0 ms   |
-| slow   | 50 ms       | 10 ms  |
-
 ## Scenarios
 
-### Calm Market
-Stable mid-price, tight spread, steady order flow.
+Three built-in market regimes:
 
-| Parameter | Value |
-|-----------|-------|
-| Initial Mid | $100.00 |
-| Spread | $0.02 |
-| Order Interval | 5 ms |
-| Market Order Ratio | 15% |
-| Cancel Rate | 10% |
-| Book Depth | 5 levels × 20 orders |
-| Duration | 10 seconds |
+- **Calm** — tight spread ($0.02), deep book, steady flow. Baseline for comparison.
+- **Thin** — wide spread ($0.05), sparse book, higher cancel rate. Amplifies queue-position effects.
+- **Spike** — periodic burst windows (500ms every 2s) where order rate quadruples and cancels double.
 
-### Thin Book
-Low depth, sporadic sweeps, higher slippage risk.
-
-| Parameter | Value |
-|-----------|-------|
-| Initial Mid | $100.00 |
-| Spread | $0.05 |
-| Order Interval | 20 ms |
-| Market Order Ratio | 25% |
-| Cancel Rate | 15% |
-| Book Depth | 3 levels × 5 orders |
-| Duration | 10 seconds |
-
-### Burst / Spike
-Periodic windows of intense activity, rapid cancels.
-
-| Parameter | Value |
-|-----------|-------|
-| Initial Mid | $100.00 |
-| Spread | $0.03 |
-| Order Interval | 8 ms (÷4 during bursts) |
-| Market Order Ratio | 20% (×2 during bursts) |
-| Cancel Rate | 25% (×2 during bursts) |
-| Burst Window | 500 ms every 2000 ms |
-| Book Depth | 5 levels × 15 orders |
-| Duration | 10 seconds |
-
-## Strategy
-
-Both traders run the same strategy for fair comparison:
-
-1. **Post at best bid/ask** - Place limit orders at the current best price
-2. **Cancel stale orders** - Cancel unfilled orders after 500 ms timeout
-3. **Cross on strong signal** - Submit a market order when signal exceeds threshold (±1.0)
-
-The strategy is intentionally simple because the goal is measuring latency impact, not alpha.
+All run for 10 simulated seconds with the same initial mid price ($100.00).
 
 ## Metrics
 
-Per-trader metrics computed from the event log:
+Per-trader, computed from the event log:
 
 | Metric | Description |
 |--------|-------------|
-| Fill Rate | Filled executable orders ÷ executable orders (order-level, 0-100%) |
-| Avg Exec Price | Volume-weighted average execution price |
-| Slippage (bps) | Execution price vs mid at decision time |
-| Time-to-Fill | Distribution of fill latencies in ms |
-| Adverse Selection | Price movement against position, 100ms post-fill |
+| Fill Rate | Filled orders ÷ executable orders |
+| Slippage (bps) | Exec price vs mid at decision time |
+| Time-to-Fill | Distribution of fill latencies |
+| Adverse Selection | Price move against position, 100ms post-fill |
+| Queue Position | Average position at placement and at fill |
 
-## Report Output
+## Output
 
-Each run produces in `runs/<run_id>/`:
+Each run writes to `runs/<run_id>/`:
 
-| File | Contents |
-|------|----------|
-| `events.jsonl` | Append-only event log (all order accepts, trades, BBO updates) |
-| `config.json` | Full scenario configuration |
-| `trades.json` | All executed trades |
-| `metrics.json` | Per-trader computed metrics |
-| `report.md` | Markdown fairness report with tables and analysis |
-| `plots.txt` | ASCII histograms and CDF plots |
+- `events.jsonl` — full event log
+- `config.json`, `trades.json`, `metrics.json` — structured data
+- `report.md` — markdown fairness report
+- `plots.txt` — ASCII histograms and CDFs
 
 ## Determinism
 
-A single `seed + scenario` reproduces:
-- The identical event log (verified by SHA-256 hash)
-- Identical fills and metrics (bit-for-bit float equality)
-
-This is achieved by:
-- Single-threaded event loop (no goroutines)
-- All randomness from seeded `math/rand`
-- Sorted iteration over maps (no reliance on Go map order)
-- Fixed-point prices (`int64 × 10⁴`) avoiding float comparison issues
+Same `seed + scenario` reproduces identical output, verified by SHA-256 hash of the event log. Achieved via single-threaded event loop, seeded RNG, sorted map iteration, and fixed-point pricing (int64 × 10⁴).
