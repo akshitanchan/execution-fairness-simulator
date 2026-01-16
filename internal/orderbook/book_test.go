@@ -263,18 +263,17 @@ func TestQueuePosition(t *testing.T) {
 	book.ProcessOrder(makeLimit(3, domain.Buy, 100, 8), 0)
 	book.AssertInvariants()
 
-	if pos := book.QueuePosition(1); pos != 1 {
-		t.Errorf("order 1 position: expected 1, got %d", pos)
-	}
-	if pos := book.QueuePosition(2); pos != 2 {
-		t.Errorf("order 2 position: expected 2, got %d", pos)
-	}
-	if pos := book.QueuePosition(3); pos != 3 {
-		t.Errorf("order 3 position: expected 3, got %d", pos)
-	}
-
-	// Non-existent order
-	if pos := book.QueuePosition(999); pos != 0 {
-		t.Errorf("non-existent order: expected 0, got %d", pos)
+	for _, tc := range []struct {
+		orderID uint64
+		want    int
+	}{
+		{1, 1},
+		{2, 2},
+		{3, 3},
+		{999, 0}, // non-existent
+	} {
+		if got := book.QueuePosition(tc.orderID); got != tc.want {
+			t.Errorf("QueuePosition(%d) = %d, want %d", tc.orderID, got, tc.want)
+		}
 	}
 }

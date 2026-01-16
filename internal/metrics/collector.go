@@ -9,7 +9,8 @@ import (
 	"github.com/akshitanchan/execution-fairness-simulator/internal/eventlog"
 )
 
-// TraderMetrics holds computed metrics for a single trader
+// TraderMetrics holds computed metrics for a single trader.
+// TODO: consider splitting raw accumulators from final computed values
 type TraderMetrics struct {
 	TraderID string `json:"trader_id"`
 

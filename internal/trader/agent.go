@@ -54,6 +54,7 @@ func (a *Agent) OnFill(trade *domain.Trade, orderID uint64) {
 	if !exists {
 		return
 	}
+	// TODO: track partial fill qty so we can report it in metrics
 	if order.RemainingQty <= 0 {
 		delete(a.ActiveOrders, orderID)
 	}

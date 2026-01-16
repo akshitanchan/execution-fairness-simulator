@@ -14,10 +14,11 @@ type backgroundGen struct {
 }
 
 func newBackgroundGen(cfg *Config) *backgroundGen {
+	// NOTE: using a separate RNG so background noise doesn't shift trader seeds
 	return &backgroundGen{
 		cfg:    cfg,
 		rng:    rand.New(rand.NewSource(cfg.Seed)),
-		nextID: 100_000, // background orders start at high IDs to avoid collision
+		nextID: 100_000, // avoid collision with trader order IDs
 	}
 }
 
