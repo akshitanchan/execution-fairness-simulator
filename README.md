@@ -147,7 +147,6 @@ Each run produces in `runs/<run_id>/`:
 A single `seed + scenario` reproduces:
 - The identical event log (verified by SHA-256 hash)
 - Identical fills and metrics (bit-for-bit float equality)
-- The same report
 
 This is achieved by:
 - Single-threaded event loop (no goroutines)
